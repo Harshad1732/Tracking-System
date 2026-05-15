@@ -1,0 +1,43 @@
+<p-toolbar class="nav">
+  <ng-template #start>
+    <div class="brand">
+      <p-avatar label="T" shape="circle" class="brand-mark"></p-avatar>
+      <span class="brand-name">Tracker</span>
+      @if (auth.tenant(); as t) {
+        <span class="tenant-pill">{{ t.name }} <small>· {{ t.slug }}</small></span>
+      }
+    </div>
+  </ng-template>
+  <ng-template #end>
+    <div class="user">
+      <p-avatar [label]="initials()" shape="circle"></p-avatar>
+      <div class="user-meta">
+        <strong>{{ auth.user()?.fullName || auth.user()?.email }}</strong>
+        <p-tag [value]="auth.user()?.role || ''" severity="info"></p-tag>
+      </div>
+      <p-button label="Logout" icon="pi pi-sign-out" severity="secondary"
+                [text]="true" (onClick)="logout()"></p-button>
+    </div>
+  </ng-template>
+</p-toolbar>
+
+<section class="content">
+  <h1>Welcome, {{ auth.user()?.fullName || auth.user()?.email }}!</h1>
+  <p class="muted">You're signed in to Tracker. This is a placeholder dashboard &mdash; the
+    real shopfloor screens will plug in here.</p>
+
+  <div class="grid">
+    <p-card>
+      <ng-template #title>Lines Active</ng-template>
+      <ng-template #content><div class="big">3 / 4</div></ng-template>
+    </p-card>
+    <p-card>
+      <ng-template #title>Plant OEE (today)</ng-template>
+      <ng-template #content><div class="big">81%</div></ng-template>
+    </p-card>
+    <p-card>
+      <ng-template #title>Open Work Orders</ng-template>
+      <ng-template #content><div class="big">12</div></ng-template>
+    </p-card>
+  </div>
+</section>

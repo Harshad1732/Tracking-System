@@ -1,0 +1,134 @@
+<p-toolbar class="nav">
+  <ng-template #start>
+    <div class="brand">
+      <p-avatar label="T" shape="circle" class="brand-mark"></p-avatar>
+      <span class="brand-name">Tracker</span>
+    </div>
+  </ng-template>
+
+  <ng-template #center>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#about">About</a>
+    </nav>
+  </ng-template>
+
+  <ng-template #end>
+    <div class="nav-actions">
+      <p-button label="Login" icon="pi pi-sign-in" [text]="true" severity="secondary"
+                routerLink="/login"></p-button>
+      <p-button label="Sign Up" icon="pi pi-user-plus" routerLink="/signup"></p-button>
+    </div>
+  </ng-template>
+</p-toolbar>
+
+<section class="hero">
+  <div class="hero-content">
+    <p-tag value="SHOPFLOOR TRACKING SYSTEM" severity="info" class="eyebrow"></p-tag>
+    <h1>See your shopfloor. <span class="accent">Run it better.</span></h1>
+    <p class="lede">
+      Tracker is a real-time manufacturing execution platform that captures
+      every machine, work order and operator event on the shopfloor &mdash; so
+      your team can cut downtime, hit takt time, and ship on schedule.
+    </p>
+    <div class="hero-actions">
+      <p-button label="Get Started" icon="pi pi-arrow-right" iconPos="right" size="large"
+                routerLink="/signup"></p-button>
+      <p-button label="Login to Dashboard" icon="pi pi-sign-in" size="large"
+                [outlined]="true" severity="contrast" routerLink="/login"></p-button>
+    </div>
+
+    <div class="stats">
+      @for (stat of stats; track stat.label) {
+        <div class="stat">
+          <div class="stat-value">{{ stat.value }}</div>
+          <div class="stat-label">{{ stat.label }}</div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="hero-visual" aria-hidden="true">
+    <p-card class="status-card">
+      <ng-template #title>
+        <div class="status-card-title">
+          <i class="pi pi-desktop"></i>
+          <span>Live Plant View</span>
+        </div>
+      </ng-template>
+      <ng-template #content>
+        @for (line of lines; track line.name) {
+          <div class="status-row">
+            <i [class]="line.icon"></i>
+            <div class="status-name">
+              <strong>{{ line.name }}</strong>
+              <span class="muted">{{ line.detail }}</span>
+            </div>
+            <p-tag [value]="line.status" [severity]="line.severity"></p-tag>
+          </div>
+        }
+      </ng-template>
+    </p-card>
+  </div>
+</section>
+
+<section id="features" class="features">
+  <div class="section-head">
+    <h2>Everything you need to run a modern shopfloor</h2>
+    <p>One source of truth for production, quality, and people.</p>
+  </div>
+
+  <div class="feature-grid">
+    @for (f of features; track f.title) {
+      <p-card class="feature-card">
+        <ng-template #header>
+          <div class="feature-icon-wrap">
+            <i [class]="f.icon"></i>
+          </div>
+        </ng-template>
+        <ng-template #title>{{ f.title }}</ng-template>
+        <ng-template #content>
+          <p class="muted">{{ f.text }}</p>
+        </ng-template>
+      </p-card>
+    }
+  </div>
+</section>
+
+<p-divider></p-divider>
+
+<section id="how" class="how">
+  <div class="section-head">
+    <h2>How Tracker fits your plant</h2>
+  </div>
+  <div class="steps">
+    @for (step of steps; track step.num) {
+      <p-card class="step-card">
+        <ng-template #header>
+          <div class="step-num">{{ step.num }}</div>
+        </ng-template>
+        <ng-template #title>{{ step.title }}</ng-template>
+        <ng-template #content>
+          <p class="muted">{{ step.text }}</p>
+        </ng-template>
+      </p-card>
+    }
+  </div>
+</section>
+
+<section id="about" class="cta">
+  <h2>Ready to bring your shopfloor online?</h2>
+  <p>Create an account and start tracking your first line today.</p>
+  <div class="cta-actions">
+    <p-button label="Sign Up" icon="pi pi-user-plus" size="large"
+              routerLink="/signup"></p-button>
+    <p-button label="Login" icon="pi pi-sign-in" size="large"
+              [text]="true" severity="contrast" routerLink="/login"></p-button>
+  </div>
+</section>
+
+<footer class="footer">
+  <span>&copy; 2026 Tracker. All rights reserved.</span>
+  <span class="muted">Shopfloor Tracking System</span>
+</footer>

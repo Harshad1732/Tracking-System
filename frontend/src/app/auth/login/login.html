@@ -1,0 +1,67 @@
+<div class="shell">
+  <div class="card-wrap">
+    <div class="brand">
+      <span class="brand-mark">T</span>
+      <span>Tracker</span>
+    </div>
+
+    <p-card class="auth-card">
+      <ng-template #title>Welcome back</ng-template>
+      <ng-template #subtitle>Sign in to your shopfloor workspace.</ng-template>
+      <ng-template #content>
+        @if (error()) { <div class="alert">{{ error() }}</div> }
+
+        <form (ngSubmit)="submit()" #f="ngForm">
+          <div class="field">
+            <label for="tenant">Workspace</label>
+            <input pInputText id="tenant" name="tenantSlug" required
+                   placeholder="e.g. acme"
+                   [(ngModel)]="tenantSlug" autocomplete="organization" />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input pInputText id="email" name="email" type="email" required
+                   [(ngModel)]="email" autocomplete="email" />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <p-password inputId="password" name="password" [(ngModel)]="password"
+                        [feedback]="false" [toggleMask]="true" required></p-password>
+          </div>
+
+          <div class="row-between">
+            <span></span>
+            <a routerLink="/forgot-password">Forgot password?</a>
+          </div>
+
+          <p-button label="Login" icon="pi pi-sign-in" type="submit"
+                    class="submit" [loading]="submitting()"
+                    [disabled]="!f.valid"></p-button>
+        </form>
+
+        <div class="divider-text">or continue with</div>
+
+        <div class="oauth">
+          @if (configured.google) {
+            <div #googleBtn class="google-host"></div>
+          } @else {
+            <div class="hint">Set <code>googleClientId</code> in <code>environment.ts</code> to enable Google login.</div>
+          }
+          @if (configured.microsoft) {
+            <p-button label="Sign in with Microsoft" icon="pi pi-microsoft"
+                      class="ms-button" [loading]="submitting()"
+                      (onClick)="signInWithMicrosoft()"></p-button>
+          } @else {
+            <div class="hint">Set <code>microsoftClientId</code> in <code>environment.ts</code> to enable Microsoft login.</div>
+          }
+        </div>
+
+        <div class="foot">
+          New here? <a routerLink="/signup">Create a workspace</a>
+        </div>
+      </ng-template>
+    </p-card>
+
+    <div class="back-home"><a routerLink="/">&larr; Back to home</a></div>
+  </div>
+</div>
