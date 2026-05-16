@@ -20,6 +20,8 @@ public interface IAuthService
     Task<bool> ResetPasswordAsync(string token, string newPassword, CancellationToken ct);
     Task<AuthResponse?> GoogleLoginAsync(string tenantSlug, string idToken, CancellationToken ct);
     Task<AuthResponse?> MicrosoftLoginAsync(string tenantSlug, string idToken, CancellationToken ct);
+    Task<AuthResponse> IssueTokensForTenantAsync(User user, Tenant targetTenant, CancellationToken ct);
+    Task<AuthResponse> IssueTokensForPlantAsync(User user, Tenant tenant, Guid plantId, CancellationToken ct);
 }
 
 public class AuthService : IAuthService
@@ -30,6 +32,9 @@ public class AuthService : IAuthService
     private readonly IEmailSender _email;
     private readonly IGoogleAuthValidator _google;
     private readonly IMicrosoftAuthValidator _microsoft;
+    private readonly IPermissionService _perms;
+    private readonly IPermissionSeeder _seeder;
+    private readonly IPlanRegistry _plans;
     private readonly JwtOptions _jwt;
 
     public AuthService(
@@ -39,6 +44,9 @@ public class AuthService : IAuthService
         IEmailSender email,
         IGoogleAuthValidator google,
         IMicrosoftAuthValidator microsoft,
+        IPermissionService perms,
+        IPermissionSeeder seeder,
+        IPlanRegistry plans,
         IOptions<JwtOptions> jwt)
     {
         _db = db;
@@ -47,6 +55,9 @@ public class AuthService : IAuthService
         _email = email;
         _google = google;
         _microsoft = microsoft;
+        _perms = perms;
+        _seeder = seeder;
+        _plans = plans;
         _jwt = jwt.Value;
     }
 
@@ -57,8 +68,6 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(baseSlug))
             return (null, "Invalid workspace name.");
 
-        // Slug collisions are auto-resolved by appending -2, -3, etc. so public sign-up
-        // never fails because someone else picked a similar name.
         var slug = baseSlug;
         var suffix = 1;
         while (await _db.Tenants.AnyAsync(t => t.Slug == slug, ct))
@@ -71,32 +80,64 @@ public class AuthService : IAuthService
         var tenant = new Tenant { Name = req.TenantName.Trim(), Slug = slug };
         _db.Tenants.Add(tenant);
 
+        var mainPlant = new Plant
+        {
+            TenantId = tenant.Id,
+            Number = 1,
+            Code = "MAIN",
+            Name = "Main Plant",
+            IsActive = true
+        };
+        _db.Plants.Add(mainPlant);
+
         var user = new User
         {
             TenantId = tenant.Id,
-            Number = 1,  // first user in a brand new tenant
+            Number = 1,
             Email = email,
             FullName = req.FullName,
-            PasswordHash = _hasher.Hash(req.Password),
-            Role = "Admin"
+            PasswordHash = _hasher.Hash(req.Password)
         };
         _db.Users.Add(user);
 
-        // Every new tenant gets a 14-day Free trial. They can upgrade from the billing page.
-        var freePlan = await _db.Plans.FirstOrDefaultAsync(p => p.Code == "free" && p.IsActive, ct);
-        if (freePlan is not null)
+        var signupPlan = await _plans.GetDefaultSignupPlanAsync(ct);
+        if (signupPlan is not null)
         {
+            // Trial length is plan-driven (Plan.TrialDays). 0 = no trial — straight to Active.
+            var trialDays = signupPlan.TrialDays;
+            var now = DateTime.UtcNow;
             _db.Subscriptions.Add(new Subscription
             {
                 TenantId = tenant.Id,
-                PlanId = freePlan.Id,
-                Status = "Trial",
-                TrialEndsAtUtc = DateTime.UtcNow.AddDays(14),
-                CurrentPeriodEndsAtUtc = DateTime.UtcNow.AddDays(14)
+                PlanId = signupPlan.Id,
+                Status = trialDays > 0 ? "Trial" : "Active",
+                TrialEndsAtUtc = trialDays > 0 ? now.AddDays(trialDays) : null,
+                CurrentPeriodEndsAtUtc = trialDays > 0
+                    ? now.AddDays(trialDays)
+                    : now.AddMonths(signupPlan.BillingIntervalMonths)
             });
         }
 
         await _db.SaveChangesAsync(ct);
+
+        // Seed the 4 built-in roles for the brand-new tenant, then grant the registrant
+        // a tenant-scoped Admin assignment so they can actually use the workspace.
+        await _seeder.SeedBuiltInRolesAsync(tenant.Id, ct);
+
+        var adminRole = await _db.RoleDefinitions
+            .FirstOrDefaultAsync(r => r.TenantId == tenant.Id && r.IsSystemAdmin, ct);
+        if (adminRole is null)
+            return (null, "Failed to seed the workspace admin role.");
+
+        _db.UserRoleAssignments.Add(new UserRoleAssignment
+        {
+            TenantId = tenant.Id,
+            UserId = user.Id,
+            RoleId = adminRole.Id,
+            ScopeType = ScopeTypes.Tenant
+        });
+        await _db.SaveChangesAsync(ct);
+
         return (await IssueTokensAsync(user, tenant, ct), null);
     }
 
@@ -203,7 +244,6 @@ public class AuthService : IAuthService
                 TenantId = tenant.Id,
                 Email = email,
                 FullName = info.Name,
-                Role = "User",
                 Provider = provider,
                 ProviderUserId = info.ProviderUserId
             };
@@ -232,10 +272,35 @@ public class AuthService : IAuthService
         return (tenant, user);
     }
 
-    private async Task<AuthResponse> IssueTokensAsync(
+    private Task<AuthResponse> IssueTokensAsync(
         User user, Tenant tenant, CancellationToken ct, RefreshToken? replacing = null)
+        => IssueTokensInternalAsync(user, tenant, null, ct, replacing);
+
+    public Task<AuthResponse> IssueTokensForTenantAsync(User user, Tenant targetTenant, CancellationToken ct)
+        => IssueTokensInternalAsync(user, targetTenant, null, ct, null);
+
+    public Task<AuthResponse> IssueTokensForPlantAsync(User user, Tenant tenant, Guid plantId, CancellationToken ct)
+        => IssueTokensInternalAsync(user, tenant, plantId, ct, null);
+
+    private async Task<AuthResponse> IssueTokensInternalAsync(
+        User user, Tenant tenant, Guid? targetPlantId, CancellationToken ct, RefreshToken? replacing)
     {
-        var (access, accessExp) = _tokens.CreateAccessToken(user, tenant);
+        var plantId = targetPlantId
+            ?? user.PlantId
+            ?? await _db.Plants.AsNoTracking()
+                   .Where(p => p.TenantId == tenant.Id && p.IsActive)
+                   .OrderBy(p => p.Number)
+                   .Select(p => (Guid?)p.Id)
+                   .FirstOrDefaultAsync(ct)
+            ?? await _db.Plants.AsNoTracking()
+                   .Where(p => p.TenantId == tenant.Id)
+                   .OrderBy(p => p.Number)
+                   .Select(p => p.Id)
+                   .FirstAsync(ct);
+
+        var isPlatformAdmin = await _db.PlatformAdmins.AnyAsync(pa => pa.UserId == user.Id, ct);
+
+        var (access, accessExp) = _tokens.CreateAccessToken(user, tenant, plantId, isPlatformAdmin);
         var (refresh, refreshHash, refreshExp) = _tokens.CreateRefreshToken();
 
         var entity = new RefreshToken
@@ -248,9 +313,22 @@ public class AuthService : IAuthService
         if (replacing is not null) replacing.ReplacedByTokenId = entity.Id;
         await _db.SaveChangesAsync(ct);
 
+        EffectivePermissions eff = isPlatformAdmin
+            ? EffectivePermissions.Platform
+            : await _perms.ResolveAsync(user.Id, tenant.Id, plantId, ct);
+
+        var userDto = new UserDto(
+            user.Id, user.Email, user.FullName,
+            eff.RoleNames,
+            eff.IsSystemAdmin,
+            isPlatformAdmin,
+            eff.Grants.Select(g => new PermissionGrantDto(g.Resource, g.Action)).ToList(),
+            user.PlantId,
+            plantId);
+
         return new AuthResponse(
             access, refresh, accessExp,
-            new UserDto(user.Id, user.Email, user.FullName, user.Role),
+            userDto,
             new TenantDto(tenant.Id, tenant.Name, tenant.Slug));
     }
 

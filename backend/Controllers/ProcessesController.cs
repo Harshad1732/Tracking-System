@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Tracker.Data;
 using Tracker.Dtos;
 using Tracker.Entities;
+using Tracker.Filters;
 using Tracker.Services;
 
 namespace Tracker.Controllers;
@@ -18,10 +19,12 @@ public class ProcessesController : TenantControllerBase
     public ProcessesController(AppDbContext db, INumberGenerator ng) { _db = db; _ng = ng; }
 
     [HttpGet]
+    [RequirePermission(Resources.Processes, Actions.View)]
     public async Task<ActionResult<IReadOnlyList<ProcessDto>>> List(CancellationToken ct)
     {
+        // Processes belong to a specific plant — only show the current plant's.
         var items = await _db.Processes.AsNoTracking()
-            .Where(p => p.TenantId == TenantId)
+            .Where(p => p.TenantId == TenantId && p.PlantId == PlantId)
             .OrderBy(p => p.SequenceNo).ThenBy(p => p.Name)
             .Select(p => new ProcessDto(p.Id, p.Number, p.PlantId, p.Plant.Name, p.Code, p.Name, p.SequenceNo, p.IsActive, p.CreatedAtUtc))
             .ToListAsync(ct);
@@ -29,19 +32,19 @@ public class ProcessesController : TenantControllerBase
     }
 
     [HttpPost]
+    [RequirePermission(Resources.Processes, Actions.Add)]
     public async Task<ActionResult<ProcessDto>> Create(ProcessUpsertRequest req, CancellationToken ct)
     {
         if (!await _db.Plants.AnyAsync(p => p.Id == req.PlantId && p.TenantId == TenantId, ct))
             return BadRequest(new { error = "Plant not found." });
-        if (await _db.Processes.AnyAsync(p => p.TenantId == TenantId && p.Code == req.Code, ct))
-            return Conflict(new { error = "A process with this code already exists." });
 
+        var number = await _ng.NextProcessAsync(TenantId, ct);
         var item = new Process
         {
             TenantId = TenantId,
-            Number = await _ng.NextProcessAsync(TenantId, ct),
+            Number = number,
             PlantId = req.PlantId,
-            Code = req.Code,
+            Code = INumberGenerator.FormatCode("PR", number),
             Name = req.Name,
             SequenceNo = req.SequenceNo,
             IsActive = req.IsActive
@@ -52,17 +55,16 @@ public class ProcessesController : TenantControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [RequirePermission(Resources.Processes, Actions.Edit)]
     public async Task<ActionResult<ProcessDto>> Update(Guid id, ProcessUpsertRequest req, CancellationToken ct)
     {
         var item = await _db.Processes.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == TenantId, ct);
         if (item is null) return NotFound();
         if (!await _db.Plants.AnyAsync(p => p.Id == req.PlantId && p.TenantId == TenantId, ct))
             return BadRequest(new { error = "Plant not found." });
-        if (await _db.Processes.AnyAsync(p => p.TenantId == TenantId && p.Code == req.Code && p.Id != id, ct))
-            return Conflict(new { error = "A process with this code already exists." });
 
+        // Code is immutable post-creation.
         item.PlantId = req.PlantId;
-        item.Code = req.Code;
         item.Name = req.Name;
         item.SequenceNo = req.SequenceNo;
         item.IsActive = req.IsActive;
@@ -71,6 +73,7 @@ public class ProcessesController : TenantControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [RequirePermission(Resources.Processes, Actions.Delete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var item = await _db.Processes.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == TenantId, ct);

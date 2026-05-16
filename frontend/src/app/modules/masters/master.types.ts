@@ -10,7 +10,7 @@ export interface Plant {
 }
 
 export interface PlantInput {
-  code: string;
+  // Code is server-generated (PLT-001 etc.) — never sent from the client.
   name: string;
   address: string | null;
   phone: string | null;
@@ -31,7 +31,6 @@ export interface Process {
 
 export interface ProcessInput {
   plantId: string;
-  code: string;
   name: string;
   sequenceNo: number;
   isActive: boolean;
@@ -54,7 +53,6 @@ export interface Employee {
 }
 
 export interface EmployeeInput {
-  code: string;
   name: string;
   mobile: string | null;
   department: string | null;
@@ -78,7 +76,6 @@ export interface Customer {
 }
 
 export interface CustomerInput {
-  code: string;
   name: string;
   contactPerson: string | null;
   mobile: string | null;
@@ -87,29 +84,51 @@ export interface CustomerInput {
   isActive: boolean;
 }
 
+export interface RolePermission {
+  resource: string;
+  action: string;
+}
+
 export interface Role {
   id: string;
   number: number;
   name: string;
   description: string | null;
-  canView: boolean;
-  canAdd: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  canViewReports: boolean;
+  isSystem: boolean;
+  isSystemAdmin: boolean;
   isActive: boolean;
+  permissions: RolePermission[];
+  assignedUserCount: number;
   createdAtUtc: string;
 }
 
 export interface RoleInput {
   name: string;
   description: string | null;
-  canView: boolean;
-  canAdd: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  canViewReports: boolean;
   isActive: boolean;
+  permissions: RolePermission[];
+}
+
+export interface PermResourceDto {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  isSystem: boolean;
+}
+
+export interface PermActionDto {
+  id: string;
+  code: string;
+  name: string;
+  sortOrder: number;
+  isSystem: boolean;
+}
+
+export interface PermissionCatalog {
+  resources: PermResourceDto[];
+  actions: PermActionDto[];
 }
 
 export type BatchMode = 'None' | 'AutoConfirm' | 'Manual';
@@ -125,17 +144,20 @@ export interface Shopfloor {
   processId: string | null;
   processName: string | null;
   sheetCount: number;
+  /** Explicit tile color override ("#RRGGBB"). Null = auto-pick from palette by sequence. */
+  color: string | null;
   isActive: boolean;
   createdAtUtc: string;
 }
 
 export interface ShopfloorInput {
-  code: string;
+  // Code is auto-generated server-side (STORAGE / SF1 / SF2 per plant).
   name: string;
   sequenceNo: number;
   isStorage: boolean;
   batchMode: BatchMode;
   processId: string | null;
+  color: string | null;
   isActive: boolean;
 }
 
@@ -160,6 +182,15 @@ export interface GlassSheet {
   remarks: string | null;
   entryAtUtc: string;
   lastMovedAtUtc: string;
+  replacementForSheetId: string | null;
+  replacementForSheetNo: string | null;
+  replacementReason: string | null;
+}
+
+export interface SheetReplaceInput {
+  sheetNo: string | null;
+  reason: string;
+  quantity: number | null;
 }
 
 export interface BatchSheetSummary {

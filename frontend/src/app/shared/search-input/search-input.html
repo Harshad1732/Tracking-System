@@ -1,0 +1,12 @@
+<p-iconfield iconPosition="left" class="m-search">
+  <p-inputicon class="pi pi-search"></p-inputicon>
+  <input pInputText type="text"
+         [placeholder]="placeholder"
+         [value]="value"
+         (input)="onInput($event)" />
+  @if (value) {
+    <button class="m-clear-btn" (click)="clear()" type="button" aria-label="Clear search">
+      <i class="pi pi-times"></i>
+    </button>
+  }
+</p-iconfield>

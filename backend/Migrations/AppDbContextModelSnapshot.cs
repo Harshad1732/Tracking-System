@@ -22,6 +22,126 @@ namespace Tracker.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Tracker.Entities.ApplicationLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ClientContext")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExceptionType")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Method")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Path")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RequestBody")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("StackTrace")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("Level");
+
+                    b.HasIndex("TenantId", "CreatedAtUtc");
+
+                    b.ToTable("ApplicationLogs");
+                });
+
+            modelBuilder.Entity("Tracker.Entities.AuthAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("ActorEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TargetType")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AtUtc");
+
+                    b.HasIndex("TenantId", "AtUtc");
+
+                    b.ToTable("AuthAuditLogs");
+                });
+
             modelBuilder.Entity("Tracker.Entities.Batch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -48,6 +168,9 @@ namespace Tracker.Migrations
                     b.Property<int>("Number")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("PlantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Remarks")
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
@@ -63,6 +186,8 @@ namespace Tracker.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CurrentShopfloorId");
+
+                    b.HasIndex("PlantId");
 
                     b.HasIndex("TenantId", "BatchNo")
                         .IsUnique();
@@ -224,12 +349,22 @@ namespace Tracker.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
 
+                    b.Property<Guid>("PlantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
                     b.Property<string>("Remarks")
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
+
+                    b.Property<Guid?>("ReplacementForSheetId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ReplacementReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("SheetNo")
                         .IsRequired()
@@ -257,6 +392,10 @@ namespace Tracker.Migrations
                     b.HasIndex("CurrentShopfloorId");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("PlantId");
+
+                    b.HasIndex("ReplacementForSheetId");
 
                     b.HasIndex("TenantId", "Number")
                         .IsUnique();
@@ -296,11 +435,109 @@ namespace Tracker.Migrations
                     b.ToTable("PasswordResetTokens");
                 });
 
+            modelBuilder.Entity("Tracker.Entities.PermAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("PermActions");
+                });
+
+            modelBuilder.Entity("Tracker.Entities.PermResource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("PermResources");
+                });
+
+            modelBuilder.Entity("Tracker.Entities.Permission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ActionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActionId");
+
+                    b.HasIndex("ResourceId", "ActionId")
+                        .IsUnique();
+
+                    b.ToTable("Permissions");
+                });
+
             modelBuilder.Entity("Tracker.Entities.Plan", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BillingIntervalMonths")
+                        .HasColumnType("int");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -317,6 +554,9 @@ namespace Tracker.Migrations
                         .HasColumnType("nvarchar(250)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefaultOnSignup")
                         .HasColumnType("bit");
 
                     b.Property<int>("MaxSheets")
@@ -345,6 +585,9 @@ namespace Tracker.Migrations
                     b.Property<string>("StripePriceId")
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("TrialDays")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -399,6 +642,22 @@ namespace Tracker.Migrations
                         .IsUnique();
 
                     b.ToTable("Plants");
+                });
+
+            modelBuilder.Entity("Tracker.Entities.PlatformAdmin", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("GrantedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("GrantedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("PlatformAdmins");
                 });
 
             modelBuilder.Entity("Tracker.Entities.Process", b =>
@@ -489,21 +748,6 @@ namespace Tracker.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("CanAdd")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("CanDelete")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("CanEdit")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("CanView")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("CanViewReports")
-                        .HasColumnType("bit");
-
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -512,6 +756,12 @@ namespace Tracker.Migrations
                         .HasColumnType("nvarchar(250)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystemAdmin")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -534,6 +784,24 @@ namespace Tracker.Migrations
                         .IsUnique();
 
                     b.ToTable("RoleDefinitions");
+                });
+
+            modelBuilder.Entity("Tracker.Entities.RolePermission", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("Tracker.Entities.SheetMovement", b =>
@@ -583,11 +851,66 @@ namespace Tracker.Migrations
                     b.ToTable("SheetMovements");
                 });
 
+            modelBuilder.Entity("Tracker.Entities.SheetStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AppliesToBatches")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AppliesToSheets")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsInitial")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsReplaceable")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsTerminal")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("SheetStatuses");
+                });
+
             modelBuilder.Entity("Tracker.Entities.Shopfloor", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ArrivalStatusCode")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
 
                     b.Property<string>("BatchMode")
                         .IsRequired()
@@ -598,6 +921,10 @@ namespace Tracker.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -616,6 +943,9 @@ namespace Tracker.Migrations
                     b.Property<int>("Number")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("PlantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("ProcessId")
                         .HasColumnType("uniqueidentifier");
 
@@ -627,9 +957,11 @@ namespace Tracker.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PlantId");
+
                     b.HasIndex("ProcessId");
 
-                    b.HasIndex("TenantId", "Code")
+                    b.HasIndex("PlantId", "Code")
                         .IsUnique();
 
                     b.HasIndex("TenantId", "Number")
@@ -745,6 +1077,9 @@ namespace Tracker.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("PlantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Provider")
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
@@ -753,15 +1088,12 @@ namespace Tracker.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PlantId");
 
                     b.HasIndex("TenantId", "Email")
                         .IsUnique();
@@ -774,11 +1106,61 @@ namespace Tracker.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Tracker.Entities.UserRoleAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ScopeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ScopeType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "RoleId", "ScopeType", "ScopeId")
+                        .IsUnique()
+                        .HasFilter("[ScopeId] IS NOT NULL");
+
+                    b.ToTable("UserRoleAssignments");
+                });
+
             modelBuilder.Entity("Tracker.Entities.Batch", b =>
                 {
                     b.HasOne("Tracker.Entities.Shopfloor", "CurrentShopfloor")
                         .WithMany()
                         .HasForeignKey("CurrentShopfloorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tracker.Entities.Plant", "Plant")
+                        .WithMany()
+                        .HasForeignKey("PlantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -789,6 +1171,8 @@ namespace Tracker.Migrations
                         .IsRequired();
 
                     b.Navigation("CurrentShopfloor");
+
+                    b.Navigation("Plant");
 
                     b.Navigation("Tenant");
                 });
@@ -843,6 +1227,16 @@ namespace Tracker.Migrations
                         .WithMany()
                         .HasForeignKey("CustomerId");
 
+                    b.HasOne("Tracker.Entities.Plant", "Plant")
+                        .WithMany()
+                        .HasForeignKey("PlantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tracker.Entities.GlassSheet", "ReplacementForSheet")
+                        .WithMany()
+                        .HasForeignKey("ReplacementForSheetId");
+
                     b.HasOne("Tracker.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -854,6 +1248,10 @@ namespace Tracker.Migrations
                     b.Navigation("CurrentShopfloor");
 
                     b.Navigation("Customer");
+
+                    b.Navigation("Plant");
+
+                    b.Navigation("ReplacementForSheet");
 
                     b.Navigation("Tenant");
                 });
@@ -869,6 +1267,25 @@ namespace Tracker.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Tracker.Entities.Permission", b =>
+                {
+                    b.HasOne("Tracker.Entities.PermAction", "Action")
+                        .WithMany()
+                        .HasForeignKey("ActionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tracker.Entities.PermResource", "Resource")
+                        .WithMany()
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Action");
+
+                    b.Navigation("Resource");
+                });
+
             modelBuilder.Entity("Tracker.Entities.Plant", b =>
                 {
                     b.HasOne("Tracker.Entities.Tenant", "Tenant")
@@ -878,6 +1295,17 @@ namespace Tracker.Migrations
                         .IsRequired();
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Tracker.Entities.PlatformAdmin", b =>
+                {
+                    b.HasOne("Tracker.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Tracker.Entities.Process", b =>
@@ -921,6 +1349,25 @@ namespace Tracker.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Tracker.Entities.RolePermission", b =>
+                {
+                    b.HasOne("Tracker.Entities.Permission", "Permission")
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tracker.Entities.RoleDefinition", "Role")
+                        .WithMany("Permissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("Tracker.Entities.SheetMovement", b =>
                 {
                     b.HasOne("Tracker.Entities.Shopfloor", "FromShopfloor")
@@ -962,6 +1409,12 @@ namespace Tracker.Migrations
 
             modelBuilder.Entity("Tracker.Entities.Shopfloor", b =>
                 {
+                    b.HasOne("Tracker.Entities.Plant", "Plant")
+                        .WithMany()
+                        .HasForeignKey("PlantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Tracker.Entities.Process", "Process")
                         .WithMany()
                         .HasForeignKey("ProcessId");
@@ -971,6 +1424,8 @@ namespace Tracker.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Plant");
 
                     b.Navigation("Process");
 
@@ -998,13 +1453,46 @@ namespace Tracker.Migrations
 
             modelBuilder.Entity("Tracker.Entities.User", b =>
                 {
+                    b.HasOne("Tracker.Entities.Plant", "Plant")
+                        .WithMany()
+                        .HasForeignKey("PlantId");
+
                     b.HasOne("Tracker.Entities.Tenant", "Tenant")
                         .WithMany("Users")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Plant");
+
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Tracker.Entities.UserRoleAssignment", b =>
+                {
+                    b.HasOne("Tracker.Entities.RoleDefinition", "Role")
+                        .WithMany("Assignments")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tracker.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tracker.Entities.User", "User")
+                        .WithMany("RoleAssignments")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Tracker.Entities.Batch", b =>
@@ -1022,6 +1510,13 @@ namespace Tracker.Migrations
                     b.Navigation("Processes");
                 });
 
+            modelBuilder.Entity("Tracker.Entities.RoleDefinition", b =>
+                {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("Permissions");
+                });
+
             modelBuilder.Entity("Tracker.Entities.Tenant", b =>
                 {
                     b.Navigation("Subscription");
@@ -1034,6 +1529,8 @@ namespace Tracker.Migrations
                     b.Navigation("PasswordResetTokens");
 
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("RoleAssignments");
                 });
 #pragma warning restore 612, 618
         }

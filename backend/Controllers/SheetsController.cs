@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Tracker.Data;
 using Tracker.Dtos;
 using Tracker.Entities;
+using Tracker.Filters;
 using Tracker.Services;
 
 namespace Tracker.Controllers;
@@ -17,17 +18,22 @@ public class SheetsController : TenantControllerBase
     private readonly AppDbContext _db;
     private readonly IPlanLimitService _limits;
     private readonly INumberGenerator _ng;
-    public SheetsController(AppDbContext db, IPlanLimitService limits, INumberGenerator ng)
+    private readonly ISheetStatusService _statuses;
+    public SheetsController(
+        AppDbContext db, IPlanLimitService limits, INumberGenerator ng,
+        ISheetStatusService statuses)
     {
         _db = db;
         _limits = limits;
         _ng = ng;
+        _statuses = statuses;
     }
 
     private Guid? CurrentUserId =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : (Guid?)null;
 
     [HttpGet]
+    [RequirePermission(Resources.Sheets, Actions.View)]
     public async Task<ActionResult<IReadOnlyList<GlassSheetDto>>> List(
         [FromQuery] Guid? shopfloorId,
         [FromQuery] string? status,
@@ -36,7 +42,7 @@ public class SheetsController : TenantControllerBase
         [FromQuery] bool? unbatched,
         CancellationToken ct)
     {
-        var q = _db.GlassSheets.AsNoTracking().Where(g => g.TenantId == TenantId);
+        var q = _db.GlassSheets.AsNoTracking().Where(g => g.TenantId == TenantId && g.PlantId == PlantId);
         if (shopfloorId.HasValue) q = q.Where(g => g.CurrentShopfloorId == shopfloorId.Value);
         if (!string.IsNullOrWhiteSpace(status)) q = q.Where(g => g.Status == status);
         if (customerId.HasValue) q = q.Where(g => g.CustomerId == customerId.Value);
@@ -52,25 +58,24 @@ public class SheetsController : TenantControllerBase
                 g.Status,
                 g.CurrentShopfloorId, g.CurrentShopfloor.Code, g.CurrentShopfloor.Name,
                 g.BatchId, g.Batch != null ? g.Batch.BatchNo : null,
-                g.Remarks, g.EntryAtUtc, g.LastMovedAtUtc))
+                g.Remarks, g.EntryAtUtc, g.LastMovedAtUtc,
+                g.ReplacementForSheetId,
+                g.ReplacementForSheet != null ? g.ReplacementForSheet.SheetNo : null,
+                g.ReplacementReason))
             .ToListAsync(ct);
         return Ok(items);
     }
 
-    private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Pending", "InProcess", "Completed", "Hold", "Rejected", "Delivered"
-    };
-
     [HttpPost("status")]
+    [RequirePermission(Resources.Sheets, Actions.Edit)]
     public async Task<ActionResult<int>> SetStatus(SheetStatusRequest req, CancellationToken ct)
     {
         if (req.SheetIds.Count == 0) return Ok(0);
-        if (!AllowedStatuses.Contains(req.Status))
+        if (!await _statuses.IsValidAsync(req.Status, forSheets: true, ct))
             return BadRequest(new { error = $"Unknown status '{req.Status}'." });
 
         var sheets = await _db.GlassSheets
-            .Where(g => g.TenantId == TenantId && req.SheetIds.Contains(g.Id))
+            .Where(g => g.TenantId == TenantId && g.PlantId == PlantId && req.SheetIds.Contains(g.Id))
             .ToListAsync(ct);
         if (sheets.Count == 0) return Ok(0);
 
@@ -97,11 +102,13 @@ public class SheetsController : TenantControllerBase
     }
 
     [HttpPost]
+    [RequirePermission(Resources.Sheets, Actions.Add)]
     public async Task<ActionResult<GlassSheetDto>> Create(SheetCreateRequest req, CancellationToken ct)
     {
+        // Storage is per-plant — find the storage floor for the CURRENT plant.
         var storage = await _db.Shopfloors
-            .FirstOrDefaultAsync(s => s.TenantId == TenantId && s.IsStorage && s.IsActive, ct);
-        if (storage is null) return BadRequest(new { error = "No Storage shopfloor configured. Add one in the Shopfloor master." });
+            .FirstOrDefaultAsync(s => s.TenantId == TenantId && s.PlantId == PlantId && s.IsStorage && s.IsActive, ct);
+        if (storage is null) return BadRequest(new { error = "No Storage shopfloor configured for this plant. Add one in the Shopfloor master." });
 
         var limit = await _limits.CheckSheetsAsync(TenantId, 1, ct);
         if (!limit.Allowed) return StatusCode(402, new { error = limit.ErrorMessage, limit = limit.Limit, current = limit.Current });
@@ -111,9 +118,11 @@ public class SheetsController : TenantControllerBase
         if (req.CustomerId is { } cid && !await _db.Customers.AnyAsync(c => c.Id == cid && c.TenantId == TenantId, ct))
             return BadRequest(new { error = "Customer not found." });
 
+        var initialStatus = await _statuses.InitialStatusCodeAsync(ct);
         var sheet = new GlassSheet
         {
             TenantId = TenantId,
+            PlantId = PlantId,
             Number = await _ng.NextSheetAsync(TenantId, ct),
             SheetNo = req.SheetNo,
             OrderNo = req.OrderNo,
@@ -123,7 +132,7 @@ public class SheetsController : TenantControllerBase
             Width = req.Width,
             Height = req.Height,
             Quantity = req.Quantity,
-            Status = "Pending",
+            Status = initialStatus,
             CurrentShopfloorId = storage.Id,
             Remarks = req.Remarks
         };
@@ -142,6 +151,7 @@ public class SheetsController : TenantControllerBase
     }
 
     [HttpPost("bulk")]
+    [RequirePermission(Resources.Sheets, Actions.Add)]
     public async Task<ActionResult<SheetBulkCreateResponse>> BulkCreate(
         SheetBulkCreateRequest req, CancellationToken ct)
     {
@@ -149,8 +159,8 @@ public class SheetsController : TenantControllerBase
             return Ok(new SheetBulkCreateResponse(0, 0, Array.Empty<string>()));
 
         var storage = await _db.Shopfloors
-            .FirstOrDefaultAsync(s => s.TenantId == TenantId && s.IsStorage && s.IsActive, ct);
-        if (storage is null) return BadRequest(new { error = "No Storage shopfloor configured." });
+            .FirstOrDefaultAsync(s => s.TenantId == TenantId && s.PlantId == PlantId && s.IsStorage && s.IsActive, ct);
+        if (storage is null) return BadRequest(new { error = "No Storage shopfloor configured for this plant." });
 
         var limit = await _limits.CheckSheetsAsync(TenantId, req.Sheets.Count, ct);
         if (!limit.Allowed) return StatusCode(402, new { error = limit.ErrorMessage, limit = limit.Limit, current = limit.Current });
@@ -168,6 +178,7 @@ public class SheetsController : TenantControllerBase
         // Reserve a contiguous Number range up front so all bulk-imported sheets
         // get sequential numbers without one MAX(Number) call per row.
         var nextNumber = await _ng.NextSheetAsync(TenantId, ct);
+        var initialStatus = await _statuses.InitialStatusCodeAsync(ct);
 
         foreach (var s in req.Sheets)
         {
@@ -181,6 +192,7 @@ public class SheetsController : TenantControllerBase
             toAdd.Add(new GlassSheet
             {
                 TenantId = TenantId,
+                PlantId = PlantId,
                 Number = nextNumber++,
                 SheetNo = s.SheetNo,
                 OrderNo = s.OrderNo,
@@ -190,7 +202,7 @@ public class SheetsController : TenantControllerBase
                 Width = s.Width,
                 Height = s.Height,
                 Quantity = s.Quantity <= 0 ? 1 : s.Quantity,
-                Status = "Pending",
+                Status = initialStatus,
                 CurrentShopfloorId = storage.Id,
                 Remarks = s.Remarks
             });
@@ -214,27 +226,35 @@ public class SheetsController : TenantControllerBase
     }
 
     [HttpPost("move")]
+    [RequirePermission(Resources.Sheets, Actions.Edit)]
     public async Task<ActionResult<int>> Move(SheetMoveRequest req, CancellationToken ct)
     {
         if (req.SheetIds.Count == 0) return Ok(0);
 
+        // Target floor must belong to the SAME plant. This is what stops a malicious
+        // payload from moving sheets across plants.
         var target = await _db.Shopfloors
-            .FirstOrDefaultAsync(s => s.Id == req.ToShopfloorId && s.TenantId == TenantId, ct);
-        if (target is null) return BadRequest(new { error = "Target shopfloor not found." });
+            .FirstOrDefaultAsync(s => s.Id == req.ToShopfloorId && s.TenantId == TenantId && s.PlantId == PlantId, ct);
+        if (target is null) return BadRequest(new { error = "Target shopfloor not found in this plant." });
         if (!target.IsActive) return BadRequest(new { error = "Target shopfloor is inactive." });
 
         var sheets = await _db.GlassSheets
-            .Where(g => g.TenantId == TenantId && req.SheetIds.Contains(g.Id))
+            .Where(g => g.TenantId == TenantId && g.PlantId == PlantId && req.SheetIds.Contains(g.Id))
             .ToListAsync(ct);
 
         var now = DateTime.UtcNow;
         var sourceBatchIds = sheets.Where(s => s.BatchId.HasValue && s.CurrentShopfloorId != target.Id)
             .Select(s => s.BatchId!.Value).Distinct().ToList();
 
+        // Resolve the arrival status from the target floor — defaults seeded as
+        // "Pending" for storage, "InProcess" for non-storage but each floor is editable.
+        var arrivalStatus = target.ArrivalStatusCode
+            ?? (target.IsStorage ? await _statuses.InitialStatusCodeAsync(ct) : "InProcess");
+
         foreach (var s in sheets)
         {
             if (s.CurrentShopfloorId == target.Id) continue;
-            var newStatus = target.IsStorage ? "Pending" : "InProcess";
+            var newStatus = arrivalStatus;
             _db.SheetMovements.Add(new SheetMovement
             {
                 TenantId = TenantId,
@@ -261,10 +281,11 @@ public class SheetsController : TenantControllerBase
             var batch = new Batch
             {
                 TenantId = TenantId,
+                PlantId = PlantId,
                 Number = await _ng.NextBatchAsync(TenantId, ct),
-                BatchNo = await NextBatchNoAsync(ct),
+                BatchNo = await _ng.NextBatchNoAsync(TenantId, ct),
                 CurrentShopfloorId = target.Id,
-                Status = "InProcess",
+                Status = arrivalStatus,
                 Remarks = req.Remarks,
                 CreatedAtUtc = now,
                 LastMovedAtUtc = now
@@ -295,10 +316,108 @@ public class SheetsController : TenantControllerBase
         return Ok(sheets.Count);
     }
 
+    // Create a replacement sheet for a damaged/rejected/held one. Copies the original's
+    // customer + glass details so the operator doesn't have to re-type everything, and
+    // links the new sheet back to the original via ReplacementForSheetId so we can trace
+    // "this order needed 2 attempts before it shipped." The original is left untouched —
+    // change its status separately if you want it off the active board.
+    [HttpPost("{id:guid}/replace")]
+    [RequirePermission(Resources.Sheets, Actions.Add)]
+    public async Task<ActionResult<GlassSheetDto>> Replace(Guid id, SheetReplaceRequest req, CancellationToken ct)
+    {
+        var original = await _db.GlassSheets
+            .FirstOrDefaultAsync(g => g.Id == id && g.TenantId == TenantId && g.PlantId == PlantId, ct);
+        if (original is null) return NotFound();
+
+        var storage = await _db.Shopfloors
+            .FirstOrDefaultAsync(s => s.TenantId == TenantId && s.PlantId == PlantId && s.IsStorage && s.IsActive, ct);
+        if (storage is null)
+            return BadRequest(new { error = "No Storage shopfloor configured for this plant. Replacements always start in Storage." });
+
+        var limit = await _limits.CheckSheetsAsync(TenantId, 1, ct);
+        if (!limit.Allowed)
+            return StatusCode(402, new { error = limit.ErrorMessage, limit = limit.Limit, current = limit.Current });
+
+        // SheetNo: caller may supply one; otherwise derive a clearly-related identifier
+        // by appending -R / -R2 / -R3 so it's obvious in lists which sheet replaced which.
+        var newSheetNo = string.IsNullOrWhiteSpace(req.SheetNo)
+            ? await DeriveReplacementSheetNoAsync(original.SheetNo, ct)
+            : req.SheetNo.Trim();
+
+        if (await _db.GlassSheets.AnyAsync(g => g.TenantId == TenantId && g.SheetNo == newSheetNo, ct))
+            return Conflict(new { error = $"Sheet number {newSheetNo} already exists." });
+
+        var replacement = new GlassSheet
+        {
+            TenantId = TenantId,
+            PlantId = PlantId,
+            Number = await _ng.NextSheetAsync(TenantId, ct),
+            SheetNo = newSheetNo,
+            OrderNo = original.OrderNo,
+            CustomerId = original.CustomerId,
+            GlassType = original.GlassType,
+            Thickness = original.Thickness,
+            Width = original.Width,
+            Height = original.Height,
+            Quantity = req.Quantity is int q && q > 0 ? q : original.Quantity,
+            Status = await _statuses.InitialStatusCodeAsync(ct),
+            CurrentShopfloorId = storage.Id,
+            Remarks = $"Replacement for {original.SheetNo}",
+            ReplacementForSheetId = original.Id,
+            ReplacementReason = req.Reason
+        };
+        _db.GlassSheets.Add(replacement);
+        _db.SheetMovements.Add(new SheetMovement
+        {
+            TenantId = TenantId,
+            GlassSheetId = replacement.Id,
+            FromShopfloorId = null,
+            ToShopfloorId = storage.Id,
+            MovedByUserId = CurrentUserId,
+            Remarks = $"Replacement created: {req.Reason}"
+        });
+
+        // Annotate the original so its history reflects that a replacement was made.
+        _db.SheetMovements.Add(new SheetMovement
+        {
+            TenantId = TenantId,
+            GlassSheetId = original.Id,
+            FromShopfloorId = original.CurrentShopfloorId,
+            ToShopfloorId = original.CurrentShopfloorId,
+            MovedByUserId = CurrentUserId,
+            Remarks = $"Replacement issued as {newSheetNo}: {req.Reason}",
+            Status = original.Status
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return await ToDto(replacement.Id, ct);
+    }
+
+    /// <summary>Max retry attempts when deriving a replacement sheet number.</summary>
+    private const int MaxReplacementAttempts = 50;
+
+    private async Task<string> DeriveReplacementSheetNoAsync(string original, CancellationToken ct)
+    {
+        // Strip any existing -R<n> suffix so a replacement of a replacement increments
+        // cleanly (-R, -R2, -R3 …) rather than stacking suffixes.
+        var match = System.Text.RegularExpressions.Regex.Match(original, "^(.*?)(-R(\\d*))?$");
+        var stem = match.Success && match.Groups[1].Length > 0 ? match.Groups[1].Value : original;
+
+        for (var attempt = 1; attempt <= MaxReplacementAttempts; attempt++)
+        {
+            var candidate = attempt == 1 ? $"{stem}-R" : $"{stem}-R{attempt}";
+            if (!await _db.GlassSheets.AnyAsync(g => g.TenantId == TenantId && g.SheetNo == candidate, ct))
+                return candidate;
+        }
+        // Fallback in the absurd case of N retries — embed a millisecond suffix.
+        return $"{stem}-R{DateTime.UtcNow:HHmmssfff}";
+    }
+
     [HttpDelete("{id:guid}")]
+    [RequirePermission(Resources.Sheets, Actions.Delete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var sheet = await _db.GlassSheets.FirstOrDefaultAsync(g => g.Id == id && g.TenantId == TenantId, ct);
+        var sheet = await _db.GlassSheets.FirstOrDefaultAsync(g => g.Id == id && g.TenantId == TenantId && g.PlantId == PlantId, ct);
         if (sheet is null) return NotFound();
         _db.GlassSheets.Remove(sheet);
         await _db.SaveChangesAsync(ct);
@@ -306,8 +425,14 @@ public class SheetsController : TenantControllerBase
     }
 
     [HttpGet("{id:guid}/movements")]
+    [RequirePermission(Resources.Sheets, Actions.View)]
     public async Task<ActionResult<IReadOnlyList<SheetMovementDto>>> Movements(Guid id, CancellationToken ct)
     {
+        // Make sure the sheet itself is in the current plant before returning its history.
+        var sheetExists = await _db.GlassSheets.AnyAsync(
+            g => g.Id == id && g.TenantId == TenantId && g.PlantId == PlantId, ct);
+        if (!sheetExists) return NotFound();
+
         var items = await _db.SheetMovements.AsNoTracking()
             .Where(m => m.TenantId == TenantId && m.GlassSheetId == id)
             .OrderByDescending(m => m.MovedAtUtc)
@@ -324,7 +449,7 @@ public class SheetsController : TenantControllerBase
     private async Task<ActionResult<GlassSheetDto>> ToDto(Guid id, CancellationToken ct)
     {
         var dto = await _db.GlassSheets.AsNoTracking()
-            .Where(g => g.Id == id)
+            .Where(g => g.Id == id && g.TenantId == TenantId && g.PlantId == PlantId)
             .Select(g => new GlassSheetDto(
                 g.Id, g.Number, g.SheetNo, g.OrderNo,
                 g.CustomerId, g.Customer != null ? g.Customer.Name : null,
@@ -332,23 +457,12 @@ public class SheetsController : TenantControllerBase
                 g.Status,
                 g.CurrentShopfloorId, g.CurrentShopfloor.Code, g.CurrentShopfloor.Name,
                 g.BatchId, g.Batch != null ? g.Batch.BatchNo : null,
-                g.Remarks, g.EntryAtUtc, g.LastMovedAtUtc))
+                g.Remarks, g.EntryAtUtc, g.LastMovedAtUtc,
+                g.ReplacementForSheetId,
+                g.ReplacementForSheet != null ? g.ReplacementForSheet.SheetNo : null,
+                g.ReplacementReason))
             .FirstAsync(ct);
         return Ok(dto);
     }
 
-    private async Task<string> NextBatchNoAsync(CancellationToken ct)
-    {
-        // BatchNo format: B-YYMMDD-NNN (per-day sequence per tenant).
-        var today = DateTime.UtcNow.ToString("yyMMdd");
-        var prefix = $"B-{today}-";
-        var lastSeq = await _db.Batches
-            .Where(b => b.TenantId == TenantId && b.BatchNo.StartsWith(prefix))
-            .Select(b => b.BatchNo)
-            .ToListAsync(ct);
-        var next = lastSeq.Count == 0
-            ? 1
-            : lastSeq.Select(n => int.TryParse(n[(prefix.Length)..], out var v) ? v : 0).Max() + 1;
-        return $"{prefix}{next:D3}";
-    }
 }

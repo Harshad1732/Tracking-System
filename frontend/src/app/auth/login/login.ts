@@ -93,7 +93,15 @@ export class Login implements OnInit {
   }
 
   private goNext() {
-    const url = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/dashboard';
-    this.router.navigateByUrl(url);
+    // Platform admins skip the per-tenant dashboard entirely and land on the
+    // tenant-management page. Any explicit ?returnUrl= query still wins so deep links
+    // (e.g. a password-reset email) work for them too.
+    const explicitReturn = this.route.snapshot.queryParamMap.get('returnUrl');
+    if (explicitReturn) {
+      this.router.navigateByUrl(explicitReturn);
+      return;
+    }
+    const home = this.auth.isPlatformAdmin() ? '/platform/tenants' : '/dashboard';
+    this.router.navigateByUrl(home);
   }
 }

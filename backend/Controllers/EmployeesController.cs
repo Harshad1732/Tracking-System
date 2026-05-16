@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Tracker.Data;
 using Tracker.Dtos;
 using Tracker.Entities;
+using Tracker.Filters;
 using Tracker.Services;
 
 namespace Tracker.Controllers;
@@ -18,6 +19,7 @@ public class EmployeesController : TenantControllerBase
     public EmployeesController(AppDbContext db, INumberGenerator ng) { _db = db; _ng = ng; }
 
     [HttpGet]
+    [RequirePermission(Resources.Employees, Actions.View)]
     public async Task<ActionResult<IReadOnlyList<EmployeeDto>>> List(CancellationToken ct)
     {
         var items = await _db.Employees.AsNoTracking()
@@ -33,20 +35,20 @@ public class EmployeesController : TenantControllerBase
     }
 
     [HttpPost]
+    [RequirePermission(Resources.Employees, Actions.Add)]
     public async Task<ActionResult<EmployeeDto>> Create(EmployeeUpsertRequest req, CancellationToken ct)
     {
-        if (await _db.Employees.AnyAsync(e => e.TenantId == TenantId && e.Code == req.Code, ct))
-            return Conflict(new { error = "An employee with this code already exists." });
         if (req.PlantId is { } pid && !await _db.Plants.AnyAsync(p => p.Id == pid && p.TenantId == TenantId, ct))
             return BadRequest(new { error = "Plant not found." });
         if (req.ProcessId is { } prid && !await _db.Processes.AnyAsync(p => p.Id == prid && p.TenantId == TenantId, ct))
             return BadRequest(new { error = "Process not found." });
 
+        var number = await _ng.NextEmployeeAsync(TenantId, ct);
         var emp = new Employee
         {
             TenantId = TenantId,
-            Number = await _ng.NextEmployeeAsync(TenantId, ct),
-            Code = req.Code,
+            Number = number,
+            Code = INumberGenerator.FormatCode("EMP", number),
             Name = req.Name,
             Mobile = req.Mobile,
             Department = req.Department,
@@ -61,18 +63,17 @@ public class EmployeesController : TenantControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [RequirePermission(Resources.Employees, Actions.Edit)]
     public async Task<ActionResult<EmployeeDto>> Update(Guid id, EmployeeUpsertRequest req, CancellationToken ct)
     {
         var emp = await _db.Employees.FirstOrDefaultAsync(e => e.Id == id && e.TenantId == TenantId, ct);
         if (emp is null) return NotFound();
-        if (await _db.Employees.AnyAsync(e => e.TenantId == TenantId && e.Code == req.Code && e.Id != id, ct))
-            return Conflict(new { error = "An employee with this code already exists." });
         if (req.PlantId is { } pid && !await _db.Plants.AnyAsync(p => p.Id == pid && p.TenantId == TenantId, ct))
             return BadRequest(new { error = "Plant not found." });
         if (req.ProcessId is { } prid && !await _db.Processes.AnyAsync(p => p.Id == prid && p.TenantId == TenantId, ct))
             return BadRequest(new { error = "Process not found." });
 
-        emp.Code = req.Code;
+        // Code is immutable post-creation.
         emp.Name = req.Name;
         emp.Mobile = req.Mobile;
         emp.Department = req.Department;
@@ -85,6 +86,7 @@ public class EmployeesController : TenantControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [RequirePermission(Resources.Employees, Actions.Delete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var emp = await _db.Employees.FirstOrDefaultAsync(e => e.Id == id && e.TenantId == TenantId, ct);

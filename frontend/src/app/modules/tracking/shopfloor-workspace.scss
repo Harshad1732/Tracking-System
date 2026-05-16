@@ -97,15 +97,20 @@
 
 .pipe {
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   gap: 0.4rem;
+  row-gap: 0.65rem;
   background: var(--bg-surface-alt);
   padding: 0.5rem;
   border-radius: var(--radius-lg);
 }
 
 .pipe-stop {
-  flex: 1 1 0;
+  // 4 stops per row. The 3 arrows + gaps between them eat ~2.5rem total, so each
+  // stop takes (25% - that buffer). max-width prevents 5 from squeezing in.
+  flex: 1 1 calc(25% - 2.6rem);
+  max-width: calc(25% - 1.6rem);
   min-width: 0;
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -274,7 +279,7 @@
 
 .floor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.85rem;
 }
 
@@ -442,12 +447,20 @@
 
 /* ============== RESPONSIVE ============== */
 
+@media (max-width: 1200px) {
+  .floor-grid { grid-template-columns: repeat(3, 1fr); }
+  .pipe-stop { flex-basis: calc(33.333% - 2.2rem); max-width: calc(33.333% - 1.4rem); }
+}
+
 @media (max-width: 900px) {
-  .pipe { flex-direction: column; }
+  .pipe { flex-direction: column; flex-wrap: nowrap; }
+  .pipe-stop { flex-basis: auto; max-width: none; }
   .pipe-arrow { transform: rotate(90deg); padding: 0.2rem 0; }
   .floor-hero { grid-template-columns: 1fr; text-align: left; }
+  .floor-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 600px) {
   .floor-hero-actions { flex-direction: column; align-items: stretch; }
+  .floor-grid { grid-template-columns: 1fr; }
 }

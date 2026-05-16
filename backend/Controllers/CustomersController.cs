@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Tracker.Data;
 using Tracker.Dtos;
 using Tracker.Entities;
+using Tracker.Filters;
 using Tracker.Services;
 
 namespace Tracker.Controllers;
@@ -18,6 +19,7 @@ public class CustomersController : TenantControllerBase
     public CustomersController(AppDbContext db, INumberGenerator ng) { _db = db; _ng = ng; }
 
     [HttpGet]
+    [RequirePermission(Resources.Customers, Actions.View)]
     public async Task<ActionResult<IReadOnlyList<CustomerDto>>> List(CancellationToken ct)
     {
         var items = await _db.Customers.AsNoTracking()
@@ -29,16 +31,16 @@ public class CustomersController : TenantControllerBase
     }
 
     [HttpPost]
+    [RequirePermission(Resources.Customers, Actions.Add)]
     public async Task<ActionResult<CustomerDto>> Create(CustomerUpsertRequest req, CancellationToken ct)
     {
-        if (await _db.Customers.AnyAsync(c => c.TenantId == TenantId && c.Code == req.Code, ct))
-            return Conflict(new { error = "A customer with this code already exists." });
-
+        var number = await _ng.NextCustomerAsync(TenantId, ct);
         var item = new Customer
         {
             TenantId = TenantId,
-            Number = await _ng.NextCustomerAsync(TenantId, ct),
-            Code = req.Code,
+            Number = number,
+            // Auto-generated: CUS-001, CUS-002 ... — single source of truth.
+            Code = INumberGenerator.FormatCode("CUS", number),
             Name = req.Name,
             ContactPerson = req.ContactPerson,
             Mobile = req.Mobile,
@@ -52,14 +54,13 @@ public class CustomersController : TenantControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [RequirePermission(Resources.Customers, Actions.Edit)]
     public async Task<ActionResult<CustomerDto>> Update(Guid id, CustomerUpsertRequest req, CancellationToken ct)
     {
         var item = await _db.Customers.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == TenantId, ct);
         if (item is null) return NotFound();
-        if (await _db.Customers.AnyAsync(c => c.TenantId == TenantId && c.Code == req.Code && c.Id != id, ct))
-            return Conflict(new { error = "A customer with this code already exists." });
 
-        item.Code = req.Code;
+        // Code is auto-generated at create — immutable.
         item.Name = req.Name;
         item.ContactPerson = req.ContactPerson;
         item.Mobile = req.Mobile;
@@ -71,6 +72,7 @@ public class CustomersController : TenantControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [RequirePermission(Resources.Customers, Actions.Delete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var item = await _db.Customers.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == TenantId, ct);

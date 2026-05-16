@@ -1,14 +1,12 @@
 <section class="m-page">
-  <header class="m-page-head">
-    <div class="m-page-head-text">
-      <span class="m-crumbs"><i class="pi pi-credit-card"></i> Administration / Billing</span>
-      <h1>Billing &amp; subscription</h1>
-      <p class="m-page-sub">Your current plan, usage, and upgrade options.</p>
-    </div>
-    <div class="m-page-actions">
-      <p-button label="See plans" icon="pi pi-arrow-right" routerLink="/plans"></p-button>
-    </div>
-  </header>
+  <app-page-header
+    icon="pi-credit-card"
+    category="Administration"
+    section="Billing"
+    title="Billing & subscription"
+    subtitle="Your current plan, usage, and upgrade options.">
+    <p-button actions label="See plans" icon="pi pi-arrow-right" routerLink="/plans"></p-button>
+  </app-page-header>
 
   @if (loading()) {
     <p-skeleton width="100%" height="200px" borderRadius="14px"></p-skeleton>

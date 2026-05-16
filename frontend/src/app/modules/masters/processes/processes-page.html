@@ -1,78 +1,47 @@
 <section class="m-page">
-  <header class="m-page-head">
-    <div class="m-page-head-text">
-      <span class="m-crumbs"><i class="pi pi-database"></i> Masters / Process Master</span>
-      <h1>Processes</h1>
-      <p class="m-page-sub">
-        Define shopfloor processes (Cutting, Grinding, Tempering …) and their sequence per plant.
-        @if (!store.loading()) {
-          <span class="m-count-chip">
-            <strong>{{ store.items().length }}</strong> total ·
-            <strong>{{ store.activeCount() }}</strong> active
-          </span>
-        }
-      </p>
-    </div>
-    <div class="m-page-actions">
-      <p-button label="Add Process" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
-    </div>
-  </header>
+  <app-page-header
+    icon="pi-sitemap"
+    category="Masters"
+    section="Process Master"
+    title="Processes"
+    subtitle="Define shopfloor processes (Cutting, Grinding, Tempering …) and their sequence per plant.">
+    @if (!store.loading()) {
+      <ng-container chips>
+        <span class="page-chip"><strong>{{ store.items().length }}</strong> total</span>
+        <span class="page-chip success"><strong>{{ store.activeCount() }}</strong> active</span>
+      </ng-container>
+    }
+    <p-button actions *hasPerm="['Processes', 'Add']" label="Add Process" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+  </app-page-header>
 
   <div class="m-panel">
     <div class="m-panel-head">
-      <p-iconfield iconPosition="left" class="m-search">
-        <p-inputicon class="pi pi-search"></p-inputicon>
-        <input pInputText type="text"
-               placeholder="Search by code, process name, plant..."
-               [value]="search()"
-               (input)="search.set($any($event.target).value)" />
-        @if (search()) {
-          <button class="m-clear-btn" (click)="clearSearch()" type="button" aria-label="Clear search">
-            <i class="pi pi-times"></i>
-          </button>
-        }
-      </p-iconfield>
+      <app-search-input [value]="search()" (valueChange)="search.set($event)"
+                        placeholder="Search by code, process name, plant..."></app-search-input>
     </div>
 
     @if (store.loading()) {
-      <table class="m-skeleton-table">
-        <thead>
-          <tr>
-            <th>Seq</th><th>Code</th><th>Process Name</th><th>Plant</th>
-            <th>Status</th><th>Created</th><th class="m-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (_ of skeletonRows; track $index) {
-            <tr>
-              <td><p-skeleton width="2rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="4rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="9rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="8rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
-              <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
-              <td class="m-actions">
-                <p-skeleton shape="circle" size="2rem"></p-skeleton>
-                <p-skeleton shape="circle" size="2rem"></p-skeleton>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <app-skeleton-table [columns]="[
+        { label: 'Seq', width: '2rem' },
+        { label: 'Code', width: '4rem' },
+        { label: 'Process Name', width: '9rem' },
+        { label: 'Plant', width: '8rem' },
+        { label: 'Status', width: '4rem' },
+        { label: 'Created', width: '6rem' },
+        { label: 'Actions', actions: true }
+      ]" [rows]="5"></app-skeleton-table>
     } @else if (filtered().length === 0 && store.items().length === 0) {
-      <div class="m-empty">
-        <div class="m-empty-icon"><i class="pi pi-sitemap"></i></div>
-        <h3>No processes yet</h3>
-        <p>Add the floors / processes your sheets move through, in sequence.</p>
-        <p-button label="Add first process" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
-      </div>
+      <app-empty-state icon="pi-sitemap"
+        title="No processes yet"
+        body="Add the floors / processes your sheets move through, in sequence."
+        ctaLabel="Add first process" ctaIcon="pi pi-plus"
+        (cta)="openAdd()"></app-empty-state>
     } @else if (filtered().length === 0) {
-      <div class="m-empty subtle">
-        <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
-        <h3>No processes match “{{ search() }}”</h3>
-        <p>Try a different keyword or clear the search.</p>
-        <p-button label="Clear search" icon="pi pi-times" severity="secondary" [outlined]="true" (onClick)="clearSearch()"></p-button>
-      </div>
+      <app-empty-state [subtle]="true" icon="pi-search"
+        [title]="'No processes match “' + search() + '”'"
+        body="Try a different keyword or clear the search."
+        ctaLabel="Clear search" ctaIcon="pi pi-times"
+        (cta)="clearSearch()"></app-empty-state>
     } @else {
       <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '52rem' }">
         <ng-template #header>
@@ -94,12 +63,10 @@
             </td>
             <td class="m-muted">{{ p.createdAtUtc | date: 'MMM d, y' }}</td>
             <td class="m-actions">
-              <button class="m-icon-btn" (click)="openEdit(p)" pTooltip="Edit" tooltipPosition="top" aria-label="Edit">
-                <i class="pi pi-pencil"></i>
-              </button>
-              <button class="m-icon-btn danger" (click)="onDelete(p)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
-                <i class="pi pi-trash"></i>
-              </button>
+              <app-row-actions
+                [canEdit]="auth.has('Processes', 'Edit')"
+                [canDelete]="auth.has('Processes', 'Delete')"
+                (edit)="openEdit(p)" (delete)="onDelete(p)"></app-row-actions>
             </td>
           </tr>
         </ng-template>
@@ -108,14 +75,21 @@
   </div>
 </section>
 
-<p-dialog
-  [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)"
-  [modal]="true" [draggable]="false" [resizable]="false"
-  [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
-  [style]="{ width: '540px' }"
-  [header]="editing() ? 'Edit Process' : 'Add Process'"
-  class="m-dialog">
+<app-form-dialog
+  [open]="dialogOpen()" (openChange)="dialogOpen.set($event)"
+  [editing]="!!editing()" [saving]="store.saving()"
+  [valid]="form.valid" entityLabel="Process" width="540px"
+  (save)="submit()">
   <form [formGroup]="form" (ngSubmit)="submit()" class="m-form">
+    @if (editing(); as e) {
+      <div class="m-info-row">
+        Code <strong class="m-code">{{ e.code }}</strong> · auto-generated, not editable.
+      </div>
+    } @else {
+      <div class="m-info-row">
+        Code is auto-generated when you save — <strong>PR-001</strong>, <strong>PR-002</strong> …
+      </div>
+    }
     <div class="m-field">
       <label for="plantId">Plant <span class="req">*</span></label>
       <p-select inputId="plantId" formControlName="plantId" [options]="plantOptions()"
@@ -123,17 +97,10 @@
       @if (hasError('plantId', 'required')) { <small class="err">Plant is required.</small> }
     </div>
 
-    <div class="m-form-row two">
-      <div class="m-field">
-        <label for="code">Code <span class="req">*</span></label>
-        <input pInputText id="code" formControlName="code" placeholder="CUT" autocomplete="off" />
-        @if (hasError('code', 'required')) { <small class="err">Code is required.</small> }
-      </div>
-      <div class="m-field">
-        <label for="name">Process name <span class="req">*</span></label>
-        <input pInputText id="name" formControlName="name" placeholder="Cutting" autocomplete="off" />
-        @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
-      </div>
+    <div class="m-field">
+      <label for="name">Process name <span class="req">*</span></label>
+      <input pInputText id="name" formControlName="name" placeholder="Cutting" autocomplete="off" />
+      @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
     </div>
 
     <div class="m-form-row two">
@@ -151,12 +118,4 @@
       </div>
     </div>
   </form>
-
-  <ng-template #footer>
-    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="store.saving()" (onClick)="closeDialog()"></p-button>
-    <p-button [label]="editing() ? 'Save changes' : 'Add Process'"
-              [icon]="editing() ? 'pi pi-check' : 'pi pi-plus'"
-              [loading]="store.saving()" [disabled]="form.invalid"
-              (onClick)="submit()"></p-button>
-  </ng-template>
-</p-dialog>
+</app-form-dialog>

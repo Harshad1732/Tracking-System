@@ -1,11 +1,11 @@
 <section class="m-page">
-  <header class="m-page-head">
-    <div class="m-page-head-text">
-      <span class="m-crumbs"><i class="pi pi-cog"></i> Administration</span>
-      <h1>Administration</h1>
-      <p class="m-page-sub">Manage users, roles and your workspace settings.</p>
-    </div>
-  </header>
+  <app-page-header
+    icon="pi-cog"
+    category="Administration"
+    [section]="tab() === 'users' ? 'Users' : 'Workspace'"
+    title="Administration"
+    subtitle="Manage users, roles and your workspace settings.">
+  </app-page-header>
 
   <!-- Tabs -->
   <nav class="adm-tabs" role="tablist">
@@ -24,53 +24,39 @@
   @if (tab() === 'users') {
     <div class="m-panel">
       <div class="m-panel-head adm-panel-head">
-        <p-iconfield iconPosition="left" class="m-search">
-          <p-inputicon class="pi pi-search"></p-inputicon>
-          <input pInputText type="text"
-                 placeholder="Search by email, name or role…"
-                 [value]="search()"
-                 (input)="search.set($any($event.target).value)" />
-        </p-iconfield>
-        <p-button label="Invite user" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+        <app-search-input [value]="search()" (valueChange)="search.set($event)"
+                          placeholder="Search by email, name or role…"></app-search-input>
+        <p-button *hasPerm="['Users', 'Add']" label="Invite user" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
       </div>
 
       @if (store.usersLoading()) {
-        <table class="m-skeleton-table">
-          <thead>
-            <tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th>Created</th><th class="m-actions">Actions</th></tr>
-          </thead>
-          <tbody>
-            @for (_ of skeletonRows; track $index) {
-              <tr>
-                <td><p-skeleton width="12rem" height="1rem"></p-skeleton></td>
-                <td><p-skeleton width="9rem" height="1rem"></p-skeleton></td>
-                <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
-                <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
-                <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
-                <td class="m-actions">
-                  <p-skeleton shape="circle" size="2rem"></p-skeleton>
-                  <p-skeleton shape="circle" size="2rem"></p-skeleton>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+        <app-skeleton-table [columns]="[
+          { label: 'Email', width: '12rem' },
+          { label: 'Name', width: '9rem' },
+          { label: 'Roles', width: '8rem' },
+          { label: 'Status', width: '4rem' },
+          { label: 'Created', width: '6rem' },
+          { label: 'Actions', actions: true }
+        ]" [rows]="5"></app-skeleton-table>
       } @else if (filteredUsers().length === 0) {
-        <div class="m-empty">
-          <div class="m-empty-icon"><i class="pi pi-users"></i></div>
-          <h3>{{ search() ? 'No matching users' : 'Just you so far' }}</h3>
-          <p>{{ search() ? 'Try a different keyword.' : 'Invite teammates to collaborate on the shopfloor.' }}</p>
-          @if (!search()) {
-            <p-button label="Invite first user" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
-          }
-        </div>
+        @if (search()) {
+          <app-empty-state [subtle]="true" icon="pi-search"
+            title="No matching users"
+            body="Try a different keyword."></app-empty-state>
+        } @else {
+          <app-empty-state icon="pi-users"
+            title="Just you so far"
+            body="Invite teammates to collaborate on the shopfloor."
+            ctaLabel="Invite first user" ctaIcon="pi pi-plus"
+            (cta)="openAdd()"></app-empty-state>
+        }
       } @else {
-        <p-table [value]="filteredUsers()" class="m-table" [tableStyle]="{ 'min-width': '60rem' }">
+        <p-table [value]="filteredUsers()" class="m-table" [tableStyle]="{ 'min-width': '64rem' }">
           <ng-template #header>
             <tr>
               <th>Email</th>
               <th>Name</th>
-              <th>Role</th>
+              <th>Roles</th>
               <th>Status</th>
               <th>Sign-in</th>
               <th>Created</th>
@@ -82,10 +68,22 @@
               <td class="m-name">
                 {{ u.email }}
                 @if (isSelf(u)) { <span class="adm-you">You</span> }
+                @if (u.isPlatformAdmin) {
+                  <span class="adm-platform" pTooltip="Platform admin — cross-tenant access" tooltipPosition="top">
+                    <i class="pi pi-globe"></i> Platform
+                  </span>
+                }
               </td>
               <td class="m-muted">{{ u.fullName || '—' }}</td>
-              <td>
-                <p-tag [value]="u.role" [severity]="roleSeverity(u.role)" class="m-status-tag"></p-tag>
+              <td class="adm-roles">
+                @if (u.assignments.length === 0) {
+                  <span class="m-muted">No roles</span>
+                } @else {
+                  @for (a of u.assignments; track a.id) {
+                    <p-tag [value]="a.scopeType === 'Tenant' ? a.roleName : a.roleName + ' @ ' + (a.scopeName || 'plant')"
+                           [severity]="roleSeverity(a)" class="m-status-tag"></p-tag>
+                  }
+                }
               </td>
               <td>
                 @if (u.isActive) {
@@ -208,7 +206,7 @@
   [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)"
   [modal]="true" [draggable]="false" [resizable]="false"
   [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
-  [style]="{ width: '520px' }"
+  [style]="{ width: '620px' }"
   [header]="editing() ? 'Edit user' : 'Invite user'"
   class="m-dialog">
   <form [formGroup]="form" (ngSubmit)="submit()" class="m-form">
@@ -218,14 +216,10 @@
       @if (hasError(form, 'email', 'required')) { <small class="err">Email is required.</small> }
       @if (hasError(form, 'email', 'email')) { <small class="err">Enter a valid email.</small> }
     </div>
-    <div class="m-field">
-      <label for="fullName">Full name</label>
-      <input pInputText id="fullName" formControlName="fullName" placeholder="Suresh Kumar" autocomplete="off" />
-    </div>
     <div class="m-form-row two">
       <div class="m-field">
-        <label for="role">Role <span class="req">*</span></label>
-        <p-select inputId="role" formControlName="role" [options]="roleOptions" appendTo="body"></p-select>
+        <label for="fullName">Full name</label>
+        <input pInputText id="fullName" formControlName="fullName" placeholder="Suresh Kumar" autocomplete="off" />
       </div>
       @if (editing()) {
         <div class="m-field">
@@ -237,6 +231,44 @@
         </div>
       }
     </div>
+
+    <div class="m-field">
+      <label for="defaultPlantId">Default plant</label>
+      <p-select inputId="defaultPlantId" formControlName="defaultPlantId" [options]="plantOptions()" appendTo="body"></p-select>
+      <small style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+        The plant the user lands on when they sign in. They can still switch to any plant
+        for which they hold a role.
+      </small>
+    </div>
+
+    <!-- Role assignments editor -->
+    <div class="m-field">
+      <label>Role assignments</label>
+      <div class="assign-rows">
+        @if (assignmentRows().length === 0) {
+          <p class="m-muted" style="font-size: 0.85rem;">No roles assigned. The user won't be able to sign in until at least one role is added.</p>
+        }
+        @for (row of assignmentRows(); track row.uiKey) {
+          <div class="assign-row">
+            <p-select [options]="roleOptions()" placeholder="Pick a role"
+                      [ngModel]="row.roleId" (ngModelChange)="updateAssignmentRole(row.uiKey, $event)"
+                      [ngModelOptions]="{ standalone: true }" appendTo="body"
+                      class="assign-role"></p-select>
+            <p-select [options]="scopeOptions()"
+                      [ngModel]="scopeValue(row)" (ngModelChange)="updateAssignmentScope(row.uiKey, $event)"
+                      [ngModelOptions]="{ standalone: true }" appendTo="body"
+                      class="assign-scope"></p-select>
+            <button type="button" class="m-icon-btn danger" (click)="removeAssignmentRow(row.uiKey)"
+                    pTooltip="Remove" tooltipPosition="top" aria-label="Remove assignment">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        }
+      </div>
+      <p-button type="button" label="Add role" icon="pi pi-plus" [text]="true" size="small"
+                (onClick)="addAssignmentRow()"></p-button>
+    </div>
+
     @if (!editing()) {
       <div class="m-field">
         <label for="password">Temporary password <span class="req">*</span></label>

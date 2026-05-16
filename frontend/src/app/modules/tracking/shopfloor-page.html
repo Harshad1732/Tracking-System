@@ -47,7 +47,7 @@
         </p>
       </div>
       <div class="m-page-actions">
-        @if (currentShopfloor()?.isStorage) {
+        @if (currentShopfloor()?.isStorage && auth.canAdd()) {
           <p-button [label]="'sf.import_excel' | t" icon="pi pi-upload" severity="secondary" [outlined]="true"
                     (onClick)="openImport()"></p-button>
           <p-button [label]="'sf.add_sheet' | t" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
@@ -63,17 +63,19 @@
           <strong>{{ selectedSheets().length }}</strong> sheet{{ selectedSheets().length === 1 ? '' : 's' }} selected
         </span>
         <div class="sel-actions">
-          @if (nextShopfloor(); as nxt) {
-            <p-button [label]="'Send to ' + nxt.name" icon="pi pi-arrow-right" (onClick)="quickSendNext()"></p-button>
+          @if (auth.canEdit()) {
+            @if (nextShopfloor(); as nxt) {
+              <p-button [label]="'Send to ' + nxt.name" icon="pi pi-arrow-right" (onClick)="quickSendNext()"></p-button>
+            }
+            <p-button [label]="('sf.move_to' | t) + '…'" icon="pi pi-arrows-h" severity="secondary" [outlined]="true"
+                      (onClick)="openMove()"></p-button>
+            @if (batchMode() === 'Manual') {
+              <p-button [label]="'sf.create_batch' | t" icon="pi pi-objects-column" severity="secondary" [outlined]="true"
+                        (onClick)="openFormBatch()"></p-button>
+            }
+            <p-button [label]="('common.status' | t) + '…'" icon="pi pi-check-square" severity="secondary" [outlined]="true"
+                      (onClick)="openStatus()"></p-button>
           }
-          <p-button [label]="('sf.move_to' | t) + '…'" icon="pi pi-arrows-h" severity="secondary" [outlined]="true"
-                    (onClick)="openMove()"></p-button>
-          @if (batchMode() === 'Manual') {
-            <p-button [label]="'sf.create_batch' | t" icon="pi pi-objects-column" severity="secondary" [outlined]="true"
-                      (onClick)="openFormBatch()"></p-button>
-          }
-          <p-button [label]="('common.status' | t) + '…'" icon="pi pi-check-square" severity="secondary" [outlined]="true"
-                    (onClick)="openStatus()"></p-button>
           <p-button [label]="'common.cancel' | t" icon="pi pi-times" severity="secondary" [text]="true"
                     (onClick)="clearSelection()"></p-button>
         </div>
@@ -88,11 +90,13 @@
           <strong>{{ selectedBatches().length }}</strong> batch{{ selectedBatches().length === 1 ? '' : 'es' }} selected
         </span>
         <div class="sel-actions">
-          @if (nextShopfloor(); as nxt) {
-            <p-button [label]="'Send batch to ' + nxt.name" icon="pi pi-arrow-right" (onClick)="openBatchMove(nxt.id)"></p-button>
+          @if (auth.canEdit()) {
+            @if (nextShopfloor(); as nxt) {
+              <p-button [label]="'Send batch to ' + nxt.name" icon="pi pi-arrow-right" (onClick)="openBatchMove(nxt.id)"></p-button>
+            }
+            <p-button label="Move batch to…" icon="pi pi-arrows-h" severity="secondary" [outlined]="true"
+                      (onClick)="openBatchMove()"></p-button>
           }
-          <p-button label="Move batch to…" icon="pi pi-arrows-h" severity="secondary" [outlined]="true"
-                    (onClick)="openBatchMove()"></p-button>
           <p-button label="Clear" icon="pi pi-times" severity="secondary" [text]="true"
                     (onClick)="selectedBatches.set([])"></p-button>
         </div>
@@ -227,10 +231,12 @@
             <div class="m-empty-icon"><i class="pi pi-inbox"></i></div>
             <h3>{{ 'sf.storage_empty' | t }}</h3>
             <p>Import sheets from Excel or add them one at a time. They'll appear here ready to be sent to the first shopfloor.</p>
-            <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
-              <p-button [label]="'sf.import_excel' | t" icon="pi pi-upload" (onClick)="openImport()"></p-button>
-              <p-button [label]="'sf.add_sheet' | t" icon="pi pi-plus" severity="secondary" [outlined]="true" (onClick)="openAdd()"></p-button>
-            </div>
+            @if (auth.canAdd()) {
+              <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
+                <p-button [label]="'sf.import_excel' | t" icon="pi pi-upload" (onClick)="openImport()"></p-button>
+                <p-button [label]="'sf.add_sheet' | t" icon="pi pi-plus" severity="secondary" [outlined]="true" (onClick)="openAdd()"></p-button>
+              </div>
+            }
           } @else {
             <div class="m-empty-icon muted"><i class="pi pi-arrow-down"></i></div>
             <h3>{{ 'sf.no_sheets' | t }}</h3>
@@ -282,9 +288,11 @@
                 <button class="m-icon-btn" (click)="openHistory(sheet)" pTooltip="History" tooltipPosition="top" aria-label="History">
                   <i class="pi pi-history"></i>
                 </button>
-                <button class="m-icon-btn danger" (click)="onDelete(sheet)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
-                  <i class="pi pi-trash"></i>
-                </button>
+                @if (auth.canDelete()) {
+                  <button class="m-icon-btn danger" (click)="onDelete(sheet)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
+                    <i class="pi pi-trash"></i>
+                  </button>
+                }
               </td>
             </tr>
           </ng-template>

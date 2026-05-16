@@ -1,78 +1,47 @@
 <section class="m-page">
-  <header class="m-page-head">
-    <div class="m-page-head-text">
-      <span class="m-crumbs"><i class="pi pi-database"></i> Masters / Employee Master</span>
-      <h1>Employees</h1>
-      <p class="m-page-sub">
-        Operators, supervisors and shopfloor staff with their plant / process assignment.
-        @if (!store.loading()) {
-          <span class="m-count-chip">
-            <strong>{{ store.items().length }}</strong> total ·
-            <strong>{{ store.activeCount() }}</strong> active
-          </span>
-        }
-      </p>
-    </div>
-    <div class="m-page-actions">
-      <p-button label="Add Employee" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
-    </div>
-  </header>
+  <app-page-header
+    icon="pi-id-card"
+    category="Masters"
+    section="Employee Master"
+    title="Employees"
+    subtitle="Operators, supervisors and shopfloor staff with their plant / process assignment.">
+    @if (!store.loading()) {
+      <ng-container chips>
+        <span class="page-chip"><strong>{{ store.items().length }}</strong> total</span>
+        <span class="page-chip success"><strong>{{ store.activeCount() }}</strong> active</span>
+      </ng-container>
+    }
+    <p-button actions *hasPerm="['Employees', 'Add']" label="Add Employee" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+  </app-page-header>
 
   <div class="m-panel">
     <div class="m-panel-head">
-      <p-iconfield iconPosition="left" class="m-search">
-        <p-inputicon class="pi pi-search"></p-inputicon>
-        <input pInputText type="text"
-               placeholder="Search by code, name, mobile, plant, process..."
-               [value]="search()"
-               (input)="search.set($any($event.target).value)" />
-        @if (search()) {
-          <button class="m-clear-btn" (click)="clearSearch()" type="button" aria-label="Clear search">
-            <i class="pi pi-times"></i>
-          </button>
-        }
-      </p-iconfield>
+      <app-search-input [value]="search()" (valueChange)="search.set($event)"
+                        placeholder="Search by code, name, mobile, plant, process..."></app-search-input>
     </div>
 
     @if (store.loading()) {
-      <table class="m-skeleton-table">
-        <thead>
-          <tr>
-            <th>Code</th><th>Name</th><th>Mobile</th><th>Plant / Process</th>
-            <th>Department</th><th>Status</th><th class="m-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (_ of skeletonRows; track $index) {
-            <tr>
-              <td><p-skeleton width="4rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="9rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="7rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="12rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="7rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
-              <td class="m-actions">
-                <p-skeleton shape="circle" size="2rem"></p-skeleton>
-                <p-skeleton shape="circle" size="2rem"></p-skeleton>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <app-skeleton-table [columns]="[
+        { label: 'Code', width: '4rem' },
+        { label: 'Name', width: '9rem' },
+        { label: 'Mobile', width: '7rem' },
+        { label: 'Plant / Process', width: '12rem' },
+        { label: 'Department', width: '7rem' },
+        { label: 'Status', width: '4rem' },
+        { label: 'Actions', actions: true }
+      ]" [rows]="5"></app-skeleton-table>
     } @else if (filtered().length === 0 && store.items().length === 0) {
-      <div class="m-empty">
-        <div class="m-empty-icon"><i class="pi pi-user"></i></div>
-        <h3>No employees yet</h3>
-        <p>Add operators and supervisors so movements can be attributed to a person.</p>
-        <p-button label="Add first employee" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
-      </div>
+      <app-empty-state icon="pi-user"
+        title="No employees yet"
+        body="Add operators and supervisors so movements can be attributed to a person."
+        ctaLabel="Add first employee" ctaIcon="pi pi-plus"
+        (cta)="openAdd()"></app-empty-state>
     } @else if (filtered().length === 0) {
-      <div class="m-empty subtle">
-        <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
-        <h3>No employees match “{{ search() }}”</h3>
-        <p>Try a different keyword or clear the search.</p>
-        <p-button label="Clear search" icon="pi pi-times" severity="secondary" [outlined]="true" (onClick)="clearSearch()"></p-button>
-      </div>
+      <app-empty-state [subtle]="true" icon="pi-search"
+        [title]="'No employees match “' + search() + '”'"
+        body="Try a different keyword or clear the search."
+        ctaLabel="Clear search" ctaIcon="pi pi-times"
+        (cta)="clearSearch()"></app-empty-state>
     } @else {
       <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '60rem' }">
         <ng-template #header>
@@ -100,12 +69,10 @@
                      class="m-status-tag"></p-tag>
             </td>
             <td class="m-actions">
-              <button class="m-icon-btn" (click)="openEdit(e)" pTooltip="Edit" tooltipPosition="top" aria-label="Edit">
-                <i class="pi pi-pencil"></i>
-              </button>
-              <button class="m-icon-btn danger" (click)="onDelete(e)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
-                <i class="pi pi-trash"></i>
-              </button>
+              <app-row-actions
+                [canEdit]="auth.has('Employees', 'Edit')"
+                [canDelete]="auth.has('Employees', 'Delete')"
+                (edit)="openEdit(e)" (delete)="onDelete(e)"></app-row-actions>
             </td>
           </tr>
         </ng-template>
@@ -114,25 +81,25 @@
   </div>
 </section>
 
-<p-dialog
-  [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)"
-  [modal]="true" [draggable]="false" [resizable]="false"
-  [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
-  [style]="{ width: '600px' }"
-  [header]="editing() ? 'Edit Employee' : 'Add Employee'"
-  class="m-dialog">
+<app-form-dialog
+  [open]="dialogOpen()" (openChange)="dialogOpen.set($event)"
+  [editing]="!!editing()" [saving]="store.saving()"
+  [valid]="form.valid" entityLabel="Employee" width="600px"
+  (save)="submit()">
   <form [formGroup]="form" (ngSubmit)="submit()" class="m-form">
-    <div class="m-form-row two">
-      <div class="m-field">
-        <label for="code">Code <span class="req">*</span></label>
-        <input pInputText id="code" formControlName="code" placeholder="EMP-001" autocomplete="off" />
-        @if (hasError('code', 'required')) { <small class="err">Code is required.</small> }
+    @if (editing(); as e) {
+      <div class="m-info-row">
+        Code <strong class="m-code">{{ e.code }}</strong> · auto-generated, not editable.
       </div>
-      <div class="m-field">
-        <label for="name">Name <span class="req">*</span></label>
-        <input pInputText id="name" formControlName="name" placeholder="Ramesh Kumar" autocomplete="off" />
-        @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
+    } @else {
+      <div class="m-info-row">
+        Code is auto-generated when you save — <strong>EMP-001</strong>, <strong>EMP-002</strong> …
       </div>
+    }
+    <div class="m-field">
+      <label for="name">Name <span class="req">*</span></label>
+      <input pInputText id="name" formControlName="name" placeholder="Ramesh Kumar" autocomplete="off" />
+      @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
     </div>
 
     <div class="m-form-row two">
@@ -174,12 +141,4 @@
       </div>
     </div>
   </form>
-
-  <ng-template #footer>
-    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="store.saving()" (onClick)="closeDialog()"></p-button>
-    <p-button [label]="editing() ? 'Save changes' : 'Add Employee'"
-              [icon]="editing() ? 'pi pi-check' : 'pi pi-plus'"
-              [loading]="store.saving()" [disabled]="form.invalid"
-              (onClick)="submit()"></p-button>
-  </ng-template>
-</p-dialog>
+</app-form-dialog>

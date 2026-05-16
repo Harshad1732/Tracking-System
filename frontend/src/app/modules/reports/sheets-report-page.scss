@@ -20,6 +20,23 @@
   font-weight: 500;
 }
 
+::ng-deep .m-replacement-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  background: rgba(168, 85, 247, 0.12);
+  color: rgb(126, 34, 206);
+  font-size: 0.72rem;
+  font-weight: 500;
+  border-radius: 999px;
+  white-space: nowrap;
+
+  i { font-size: 0.72rem; }
+  strong { font-weight: 700; }
+}
+
 @media (max-width: 700px) {
   .report-filters { flex-direction: column; align-items: stretch; }
   ::ng-deep .filter-select.p-select { width: 100%; }

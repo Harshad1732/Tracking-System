@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Tracker.Data;
 using Tracker.Dtos;
+using Tracker.Filters;
+using Tracker.Services;
 
 namespace Tracker.Controllers;
 
@@ -16,13 +18,16 @@ public class ReportsController : TenantControllerBase
     private readonly AppDbContext _db;
     public ReportsController(AppDbContext db) => _db = db;
 
+    // Dashboard counters are visible to anyone with View permission — they're the home screen,
+    // not a report. Full reports below require Perm.ViewReports.
     [HttpGet("dashboard-stats")]
+    [RequirePermission(Resources.Sheets, Actions.View)]
     public async Task<ActionResult<DashboardStatsDto>> DashboardStats(CancellationToken ct)
     {
         var todayUtcStart = DateTime.UtcNow.Date;
 
         var sheets = await _db.GlassSheets.AsNoTracking()
-            .Where(g => g.TenantId == TenantId)
+            .Where(g => g.TenantId == TenantId && g.PlantId == PlantId)
             .Select(g => new { g.Status, g.EntryAtUtc })
             .ToListAsync(ct);
 
@@ -38,7 +43,7 @@ public class ReportsController : TenantControllerBase
         }
 
         var byFloor = await _db.Shopfloors.AsNoTracking()
-            .Where(s => s.TenantId == TenantId && s.IsActive)
+            .Where(s => s.TenantId == TenantId && s.PlantId == PlantId && s.IsActive)
             .OrderBy(s => s.SequenceNo).ThenBy(s => s.Name)
             .Select(s => new DashboardFloorDto(
                 s.Id, s.Code, s.Name, s.SequenceNo, s.IsStorage,
@@ -46,7 +51,7 @@ public class ReportsController : TenantControllerBase
             .ToListAsync(ct);
 
         var movementsToday = await _db.SheetMovements.AsNoTracking()
-            .CountAsync(m => m.TenantId == TenantId && m.MovedAtUtc >= todayUtcStart, ct);
+            .CountAsync(m => m.TenantId == TenantId && m.GlassSheet.PlantId == PlantId && m.MovedAtUtc >= todayUtcStart, ct);
         var sheetsAddedToday = sheets.Count(s => s.EntryAtUtc >= todayUtcStart);
 
         return Ok(new DashboardStatsDto(
@@ -59,6 +64,7 @@ public class ReportsController : TenantControllerBase
     }
 
     [HttpGet("export/sheets.csv")]
+    [RequirePermission(Resources.Reports, Actions.View)]
     public async Task<IActionResult> ExportSheets(
         [FromQuery] Guid? shopfloorId,
         [FromQuery] string? status,
@@ -68,7 +74,7 @@ public class ReportsController : TenantControllerBase
         [FromQuery] string? fileName,
         CancellationToken ct)
     {
-        var q = _db.GlassSheets.AsNoTracking().Where(g => g.TenantId == TenantId);
+        var q = _db.GlassSheets.AsNoTracking().Where(g => g.TenantId == TenantId && g.PlantId == PlantId);
         if (shopfloorId.HasValue) q = q.Where(g => g.CurrentShopfloorId == shopfloorId.Value);
         if (!string.IsNullOrWhiteSpace(status)) q = q.Where(g => g.Status == status);
         if (!string.IsNullOrWhiteSpace(excludeStatus)) q = q.Where(g => g.Status != excludeStatus);
@@ -126,10 +132,11 @@ public class ReportsController : TenantControllerBase
     }
 
     [HttpGet("export/process.csv")]
+    [RequirePermission(Resources.Reports, Actions.View)]
     public async Task<IActionResult> ExportProcess(CancellationToken ct)
     {
         var rows = await _db.Shopfloors.AsNoTracking()
-            .Where(s => s.TenantId == TenantId)
+            .Where(s => s.TenantId == TenantId && s.PlantId == PlantId)
             .OrderBy(s => s.SequenceNo).ThenBy(s => s.Name)
             .Select(s => new
             {

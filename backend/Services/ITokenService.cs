@@ -11,7 +11,7 @@ namespace Tracker.Services;
 
 public interface ITokenService
 {
-    (string token, DateTime expiresAtUtc) CreateAccessToken(User user, Tenant tenant);
+    (string token, DateTime expiresAtUtc) CreateAccessToken(User user, Tenant tenant, Guid plantId, bool isPlatformAdmin);
     (string token, string hash, DateTime expiresAtUtc) CreateRefreshToken();
     string HashToken(string token);
 }
@@ -22,7 +22,8 @@ public class TokenService : ITokenService
 
     public TokenService(IOptions<JwtOptions> jwt) => _jwt = jwt.Value;
 
-    public (string token, DateTime expiresAtUtc) CreateAccessToken(User user, Tenant tenant)
+    public (string token, DateTime expiresAtUtc) CreateAccessToken(
+        User user, Tenant tenant, Guid plantId, bool isPlatformAdmin)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -34,12 +35,14 @@ public class TokenService : ITokenService
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.Email),
-            new(ClaimTypes.Role, user.Role),
-            new("tid", tenant.Id.ToString()),
-            new("tslug", tenant.Slug),
-            new("tname", tenant.Name),
+            new(TrackerClaims.TenantId, tenant.Id.ToString()),
+            new(TrackerClaims.TenantSlug, tenant.Slug),
+            new(TrackerClaims.TenantName, tenant.Name),
+            new(TrackerClaims.PlantId, plantId.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+        if (isPlatformAdmin)
+            claims.Add(new Claim(TrackerClaims.PlatformAdmin, "true"));
 
         var token = new JwtSecurityToken(
             issuer: _jwt.Issuer,

@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { GlassSheet, SheetBulkResponse, SheetCreateInput, SheetListFilters, SheetMovement } from '../masters/master.types';
+import { GlassSheet, SheetBulkResponse, SheetCreateInput, SheetListFilters, SheetMovement, SheetReplaceInput } from '../masters/master.types';
 
 @Injectable({ providedIn: 'root' })
 export class SheetsService {
@@ -99,5 +99,16 @@ export class SheetsService {
 
   movements(sheetId: string): Promise<SheetMovement[]> {
     return firstValueFrom(this.http.get<SheetMovement[]>(`${this.api}/${sheetId}/movements`));
+  }
+
+  async replace(sheetId: string, input: SheetReplaceInput): Promise<GlassSheet> {
+    this._saving.set(true);
+    try {
+      // The new sheet starts in Storage so it doesn't appear in this floor's view.
+      // Callers refresh the list themselves if they want it to show somewhere else.
+      return await firstValueFrom(this.http.post<GlassSheet>(`${this.api}/${sheetId}/replace`, input));
+    } finally {
+      this._saving.set(false);
+    }
   }
 }

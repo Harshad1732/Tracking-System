@@ -1,35 +1,28 @@
 <section class="m-page">
-  <header class="m-page-head">
-    <div class="m-page-head-text">
-      <span class="m-crumbs"><i class="pi pi-chart-bar"></i> Reports / {{ config().crumbLabel }}</span>
-      <h1>{{ config().title }}</h1>
-      <p class="m-page-sub">
-        {{ config().description }}
-        @if (!sheets.loading()) {
-          <span class="m-count-chip">
-            <strong>{{ displayCount() }}</strong> shown
-            @if (displayCount() !== totalCount()) { · of {{ totalCount() }} }
-          </span>
-        }
-      </p>
-    </div>
-    <div class="m-page-actions">
-      <p-button label="Export CSV" icon="pi pi-download" severity="secondary" [outlined]="true"
-                [loading]="exporting()" (onClick)="exportCsv()"></p-button>
-      <p-button label="Refresh" icon="pi pi-refresh" severity="secondary" [text]="true"
-                (onClick)="reload()"></p-button>
-    </div>
-  </header>
+  <app-page-header
+    [icon]="config().icon"
+    category="Reports"
+    [section]="config().crumbLabel"
+    [title]="config().title"
+    [subtitle]="config().description">
+    @if (!sheets.loading()) {
+      <ng-container chips>
+        <span class="page-chip">
+          <strong>{{ displayCount() }}</strong> shown
+          @if (displayCount() !== totalCount()) { · of {{ totalCount() }} }
+        </span>
+      </ng-container>
+    }
+    <p-button actions label="Export CSV" icon="pi pi-download" severity="secondary" [outlined]="true"
+              [loading]="exporting()" (onClick)="exportCsv()"></p-button>
+    <p-button actions label="Refresh" icon="pi pi-refresh" severity="secondary" [text]="true"
+              (onClick)="reload()"></p-button>
+  </app-page-header>
 
   <div class="m-panel">
     <div class="m-panel-head report-filters">
-      <p-iconfield iconPosition="left" class="m-search">
-        <p-inputicon class="pi pi-search"></p-inputicon>
-        <input pInputText type="text"
-               placeholder="Search by sheet no, order, customer, type..."
-               [value]="search()"
-               (input)="search.set($any($event.target).value)" />
-      </p-iconfield>
+      <app-search-input [value]="search()" (valueChange)="search.set($event)"
+                        placeholder="Search by sheet no, order, customer, type..."></app-search-input>
       <p-select [options]="shopfloorOptions()"
                 [ngModel]="shopfloorFilter()"
                 (ngModelChange)="shopfloorFilter.set($event)"
@@ -47,27 +40,15 @@
     </div>
 
     @if (sheets.loading()) {
-      <table class="m-skeleton-table">
-        <thead>
-          <tr>
-            <th>Sheet No</th><th>Order</th><th>Customer</th><th>Current Floor</th>
-            <th>Status</th><th>Days</th><th>Last moved</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (_ of skeletonRows; track $index) {
-            <tr>
-              <td><p-skeleton width="5rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="5rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="8rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
-              <td><p-skeleton width="2rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="7rem" height="1rem"></p-skeleton></td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <app-skeleton-table [columns]="[
+        { label: 'Sheet No', width: '5rem' },
+        { label: 'Order', width: '5rem' },
+        { label: 'Customer', width: '8rem' },
+        { label: 'Current Floor', width: '6rem' },
+        { label: 'Status', width: '4rem' },
+        { label: 'Days', width: '2rem' },
+        { label: 'Last moved', width: '7rem' }
+      ]" [rows]="6"></app-skeleton-table>
     } @else if (sheets.items().length === 0) {
       <div class="m-empty">
         <div class="m-empty-icon"><i [class]="config().icon"></i></div>
@@ -76,29 +57,36 @@
         <p-button label="Open Storage" icon="pi pi-arrow-right" routerLink="/dashboard"></p-button>
       </div>
     } @else if (filtered().length === 0) {
-      <div class="m-empty subtle">
-        <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
-        <h3>No sheets match the current filters</h3>
-        <p>Try adjusting the filters or clearing them.</p>
-        <p-button label="Clear filters" icon="pi pi-times" severity="secondary" [outlined]="true"
-                  (onClick)="clearFilters()"></p-button>
-      </div>
+      <app-empty-state [subtle]="true" icon="pi-search"
+        title="No sheets match the current filters"
+        body="Try adjusting the filters or clearing them."
+        ctaLabel="Clear filters" ctaIcon="pi pi-times"
+        (cta)="clearFilters()"></app-empty-state>
     } @else {
-      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '64rem' }">
+      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '70rem' }">
         <ng-template #header>
           <tr>
             <th>Sheet No</th><th>Order</th><th>Customer</th><th>Current Floor</th>
             <th>Type · Size</th><th>Qty</th><th>Status</th><th>Days</th><th>Last moved</th>
+            <th class="m-actions">Actions</th>
           </tr>
         </ng-template>
         <ng-template #body let-s>
           <tr>
-            <td><span class="m-code">{{ s.sheetNo }}</span></td>
+            <td>
+              <span class="m-code">{{ s.sheetNo }}</span>
+              @if (s.replacementForSheetNo) {
+                <div class="m-replacement-chip" [pTooltip]="s.replacementReason || ''" tooltipPosition="top">
+                  <i class="pi pi-replay"></i>
+                  Replaces <strong>{{ s.replacementForSheetNo }}</strong>
+                </div>
+              }
+            </td>
             <td class="m-muted">{{ s.orderNo || '—' }}</td>
             <td class="m-name">{{ s.customerName || '—' }}</td>
             <td>
               <span class="floor-cell">
-                @if (s.currentShopfloorCode === 'STORAGE') {
+                @if (s.currentShopfloorCode.startsWith('STORAGE')) {
                   <i class="pi pi-box" style="color: var(--status-delivered);"></i>
                 } @else {
                   <i class="pi pi-cog" style="color: var(--color-primary);"></i>
@@ -118,9 +106,75 @@
             </td>
             <td class="m-mono">{{ daysSince(s.entryAtUtc) }}</td>
             <td class="m-muted">{{ s.lastMovedAtUtc | date: 'MMM d, h:mm a' }}</td>
+            <td class="m-actions">
+              @if (canReplace(s)) {
+                <p-button label="Create replacement" icon="pi pi-replay" size="small" [outlined]="true"
+                          severity="secondary" (onClick)="openReplace(s)"
+                          pTooltip="Start a fresh sheet for this order — keeps the original here with its history."
+                          tooltipPosition="left"></p-button>
+              }
+            </td>
           </tr>
         </ng-template>
       </p-table>
     }
   </div>
 </section>
+
+<p-dialog
+  [visible]="replaceOpen()" (visibleChange)="replaceOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!replaceSaving()" [closeOnEscape]="!replaceSaving()"
+  [style]="{ width: '520px' }"
+  header="Create replacement sheet"
+  class="m-dialog">
+  @if (replaceTarget(); as t) {
+    <div class="m-form">
+      <p class="m-muted" style="margin-top:0;">
+        Replacing <strong>{{ t.sheetNo }}</strong>
+        @if (t.customerName) { · {{ t.customerName }} }
+        @if (t.orderNo) { · order {{ t.orderNo }} }
+        · status <strong>{{ t.status }}</strong>.
+        <br/>
+        A new sheet will be created in Storage with the same customer and dimensions. The
+        original stays where it is so you keep the trail.
+      </p>
+
+      <div class="m-field">
+        <label for="rep-reason">Reason <span class="req">*</span></label>
+        <textarea pTextarea id="rep-reason" rows="3"
+                  [ngModel]="replaceForm().reason"
+                  (ngModelChange)="replaceForm.set({ ...replaceForm(), reason: $event })"
+                  placeholder="e.g. Customer rejected — wrong tint. / Edge chipped at SF2."></textarea>
+      </div>
+
+      <div class="m-form-row two">
+        <div class="m-field">
+          <label for="rep-sheet-no">New sheet number</label>
+          <input pInputText id="rep-sheet-no"
+                 [ngModel]="replaceForm().sheetNo"
+                 (ngModelChange)="replaceForm.set({ ...replaceForm(), sheetNo: $event })"
+                 [placeholder]="t.sheetNo + '-R (auto)'" autocomplete="off" />
+          <small class="m-muted" style="font-size: 0.78rem; margin-top: 0.25rem;">
+            Leave blank to auto-generate.
+          </small>
+        </div>
+        <div class="m-field">
+          <label for="rep-qty">Quantity</label>
+          <p-inputnumber inputId="rep-qty" [min]="1"
+                         [ngModel]="replaceForm().quantity"
+                         (ngModelChange)="replaceForm.set({ ...replaceForm(), quantity: $event })"></p-inputnumber>
+        </div>
+      </div>
+    </div>
+  }
+
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true"
+              [disabled]="replaceSaving()" (onClick)="closeReplace()"></p-button>
+    <p-button label="Create replacement" icon="pi pi-replay"
+              [loading]="replaceSaving()"
+              [disabled]="!replaceForm().reason.trim()"
+              (onClick)="submitReplace()"></p-button>
+  </ng-template>
+</p-dialog>

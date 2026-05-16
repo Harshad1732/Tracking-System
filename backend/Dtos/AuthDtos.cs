@@ -40,6 +40,22 @@ public record AuthResponse(
     UserDto User,
     TenantDto Tenant);
 
-public record UserDto(Guid Id, string Email, string? FullName, string Role);
+/// <summary>
+/// User shape returned to the client. Replaces the legacy single-string Role + 5-bool
+/// PermissionDto with the union of grants from every active role assignment.
+/// </summary>
+public record UserDto(
+    Guid Id,
+    string Email,
+    string? FullName,
+    IReadOnlyList<string> Roles,
+    bool IsSystemAdmin,
+    bool IsPlatformAdmin,
+    IReadOnlyList<PermissionGrantDto> Permissions,
+    Guid? LockedPlantId,
+    Guid CurrentPlantId);
+
+/// <summary>One (resource, action) pair the caller can perform in the current context.</summary>
+public record PermissionGrantDto(string Resource, string Action);
 
 public record TenantDto(Guid Id, string Name, string Slug);

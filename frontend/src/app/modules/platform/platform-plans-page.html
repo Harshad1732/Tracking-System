@@ -1,0 +1,110 @@
+<section class="m-page">
+  <app-page-header
+    icon="pi-tags"
+    category="Platform"
+    section="Plans"
+    title="Subscription plans"
+    subtitle="Tiers offered to tenants. Editing comes in a later iteration — for now this view confirms what's seeded and which plan new sign-ups land on.">
+    @if (!store.loading()) {
+      <ng-container chips>
+        <span class="page-chip"><strong>{{ store.plans().length }}</strong> total</span>
+      </ng-container>
+    }
+  </app-page-header>
+
+  <div class="m-panel">
+    <div class="m-panel-head">
+      <app-search-input [value]="search()" (valueChange)="search.set($event)"
+                        placeholder="Search by code, name, description..."></app-search-input>
+    </div>
+
+    @if (store.loading()) {
+      <app-skeleton-table [columns]="[
+        { label: 'Code', width: '4rem' },
+        { label: 'Name', width: '8rem' },
+        { label: 'Price', width: '5rem' },
+        { label: 'Sheets', width: '4rem' },
+        { label: 'Users', width: '4rem' },
+        { label: 'Floors', width: '4rem' },
+        { label: 'Trial', width: '4rem' },
+        { label: 'Billing', width: '5rem' },
+        { label: 'Status', width: '4rem' }
+      ]" [rows]="4"></app-skeleton-table>
+    } @else if (filtered().length === 0 && store.plans().length === 0) {
+      <app-empty-state icon="pi-tags"
+        title="No plans configured"
+        body="Plans are seeded at startup. If you see this, the seed didn't run — check Program.cs SeedPlansAsync."></app-empty-state>
+    } @else if (filtered().length === 0) {
+      <app-empty-state [subtle]="true" icon="pi-search"
+        [title]="'No plans match “' + search() + '”'"
+        body="Try a different keyword."
+        ctaLabel="Clear search" ctaIcon="pi pi-times"
+        (cta)="search.set('')"></app-empty-state>
+    } @else {
+      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '64rem' }">
+        <ng-template #header>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th class="m-mono">Sheets</th>
+            <th class="m-mono">Users</th>
+            <th class="m-mono">Floors</th>
+            <th>Trial</th>
+            <th>Billing</th>
+            <th>Retention</th>
+            <th>Stripe</th>
+            <th>Status</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-p>
+          <tr>
+            <td>
+              <span class="m-code">{{ p.code }}</span>
+              @if (p.isDefaultOnSignup) {
+                <span class="plan-default-pill" pTooltip="New sign-ups land on this plan" tooltipPosition="top">
+                  <i class="pi pi-star-fill"></i> Default
+                </span>
+              }
+            </td>
+            <td class="m-name">
+              {{ p.name }}
+              @if (p.description) {
+                <div class="m-muted" style="font-size:0.78rem;font-weight:500;">{{ p.description }}</div>
+              }
+            </td>
+            <td class="m-mono">{{ priceLabel(p) }}</td>
+            <td class="m-mono">{{ limitLabel(p.maxSheets) }}</td>
+            <td class="m-mono">{{ limitLabel(p.maxUsers) }}</td>
+            <td class="m-mono">{{ limitLabel(p.maxShopfloors) }}</td>
+            <td class="m-muted">
+              @if (p.trialDays > 0) { {{ p.trialDays }} days }
+              @else { <span class="m-muted">—</span> }
+            </td>
+            <td class="m-muted">
+              @if (p.billingIntervalMonths === 1) { Monthly }
+              @else if (p.billingIntervalMonths === 12) { Yearly }
+              @else { Every {{ p.billingIntervalMonths }}mo }
+            </td>
+            <td class="m-muted">
+              @if (p.retentionDays < 0) { Unlimited }
+              @else { {{ p.retentionDays }} days }
+            </td>
+            <td class="m-muted">
+              @if (p.stripePriceId) {
+                <span class="m-code" pTooltip="Stripe Price ID" tooltipPosition="top">{{ p.stripePriceId }}</span>
+              } @else {
+                <span class="m-muted">—</span>
+              }
+            </td>
+            <td>
+              <p-tag [value]="p.isActive ? 'Active' : 'Disabled'"
+                     [severity]="p.isActive ? 'success' : 'secondary'"
+                     class="m-status-tag"></p-tag>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</section>

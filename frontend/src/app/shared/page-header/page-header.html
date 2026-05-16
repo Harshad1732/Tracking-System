@@ -1,0 +1,40 @@
+<header class="page-header" [class.has-accent]="!!accent">
+  <div class="page-header-lead">
+    <div class="page-header-badge"
+         [style.--ph-accent]="accent || 'var(--color-primary)'"
+         [style.--ph-accent-dark]="accent || 'var(--color-primary-600)'">
+      <i class="pi {{ icon }}"></i>
+    </div>
+
+    <div class="page-header-text">
+      @if (category || section) {
+        <nav class="page-header-crumbs" aria-label="Breadcrumb">
+          @if (category) { <span class="page-header-crumb">{{ category }}</span> }
+          @if (category && section) { <span class="page-header-sep">/</span> }
+          @if (section)  { <span class="page-header-crumb is-leaf">{{ section }}</span> }
+        </nav>
+      }
+
+      <h1 class="page-header-title">{{ title }}</h1>
+
+      @if (subtitle) {
+        <p class="page-header-subtitle">
+          {{ subtitle }}
+          <ng-content select="[chips]"></ng-content>
+        </p>
+      } @else {
+        <div class="page-header-chip-row">
+          <ng-content select="[chips]"></ng-content>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="page-header-actions">
+    <ng-content select="[actions]"></ng-content>
+  </div>
+
+  <span class="page-header-accent-bar" aria-hidden="true"
+        [style.--ph-accent]="accent || 'var(--color-primary)'"
+        [style.--ph-accent-dark]="accent || 'var(--color-primary-600)'"></span>
+</header>

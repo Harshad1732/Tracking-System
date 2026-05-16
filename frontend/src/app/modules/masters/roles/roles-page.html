@@ -1,112 +1,82 @@
 <section class="m-page">
-  <header class="m-page-head">
-    <div class="m-page-head-text">
-      <span class="m-crumbs"><i class="pi pi-database"></i> Masters / Role Master</span>
-      <h1>Roles</h1>
-      <p class="m-page-sub">
-        Define what each role can do — view, add, edit, delete, view reports.
-        @if (!store.loading()) {
-          <span class="m-count-chip">
-            <strong>{{ store.items().length }}</strong> total ·
-            <strong>{{ store.activeCount() }}</strong> active
-          </span>
-        }
-      </p>
-    </div>
-    <div class="m-page-actions">
-      <p-button label="Add Role" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
-    </div>
-  </header>
+  <app-page-header
+    icon="pi-shield"
+    category="Masters"
+    section="Role Master"
+    title="Roles & Permissions"
+    subtitle="A role bundles permissions across resources. Built-in roles can't be renamed or deleted; clone them to start from a known baseline.">
+    @if (!store.loading()) {
+      <ng-container chips>
+        <span class="page-chip"><strong>{{ store.items().length }}</strong> total</span>
+        <span class="page-chip success"><strong>{{ store.activeCount() }}</strong> active</span>
+      </ng-container>
+    }
+    <p-button actions *hasPerm="['Roles', 'Add']" label="Add Role" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+  </app-page-header>
 
   <div class="m-panel">
     <div class="m-panel-head">
-      <p-iconfield iconPosition="left" class="m-search">
-        <p-inputicon class="pi pi-search"></p-inputicon>
-        <input pInputText type="text"
-               placeholder="Search by name or description..."
-               [value]="search()"
-               (input)="search.set($any($event.target).value)" />
-        @if (search()) {
-          <button class="m-clear-btn" (click)="clearSearch()" type="button" aria-label="Clear search">
-            <i class="pi pi-times"></i>
-          </button>
-        }
-      </p-iconfield>
+      <app-search-input [value]="search()" (valueChange)="search.set($event)"
+                        placeholder="Search by name or description..."></app-search-input>
     </div>
 
     @if (store.loading()) {
-      <table class="m-skeleton-table">
-        <thead>
-          <tr>
-            <th>Role</th><th>Description</th><th>Permissions</th>
-            <th>Status</th><th>Created</th><th class="m-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (_ of skeletonRows; track $index) {
-            <tr>
-              <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="14rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="10rem" height="1rem"></p-skeleton></td>
-              <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
-              <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
-              <td class="m-actions">
-                <p-skeleton shape="circle" size="2rem"></p-skeleton>
-                <p-skeleton shape="circle" size="2rem"></p-skeleton>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <app-skeleton-table [columns]="[
+        { label: 'Role', width: '6rem' },
+        { label: 'Description', width: '14rem' },
+        { label: 'Permissions', width: '10rem' },
+        { label: 'Users', width: '3rem' },
+        { label: 'Status', width: '4rem' },
+        { label: 'Actions', actions: true }
+      ]" [rows]="4"></app-skeleton-table>
     } @else if (filtered().length === 0 && store.items().length === 0) {
-      <div class="m-empty">
-        <div class="m-empty-icon"><i class="pi pi-id-card"></i></div>
-        <h3>No roles yet</h3>
-        <p>Roles like Admin, Supervisor, Operator and Viewer keep access scoped.</p>
-        <p-button label="Add first role" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
-      </div>
+      <app-empty-state icon="pi-id-card"
+        title="No roles yet"
+        body="Roles like Admin, Manager, Operator and Viewer keep access scoped."
+        ctaLabel="Add first role" ctaIcon="pi pi-plus"
+        (cta)="openAdd()"></app-empty-state>
     } @else if (filtered().length === 0) {
-      <div class="m-empty subtle">
-        <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
-        <h3>No roles match “{{ search() }}”</h3>
-        <p>Try a different keyword or clear the search.</p>
-        <p-button label="Clear search" icon="pi pi-times" severity="secondary" [outlined]="true" (onClick)="clearSearch()"></p-button>
-      </div>
+      <app-empty-state [subtle]="true" icon="pi-search"
+        [title]="'No roles match “' + search() + '”'"
+        body="Try a different keyword or clear the search."
+        ctaLabel="Clear search" ctaIcon="pi pi-times"
+        (cta)="clearSearch()"></app-empty-state>
     } @else {
-      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '54rem' }">
+      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '56rem' }">
         <ng-template #header>
           <tr>
             <th>Role</th><th>Description</th><th>Permissions</th>
-            <th>Status</th><th>Created</th><th class="m-actions">Actions</th>
+            <th>Users</th><th>Status</th><th class="m-actions">Actions</th>
           </tr>
         </ng-template>
         <ng-template #body let-r>
           <tr>
-            <td class="m-name">{{ r.name }}</td>
-            <td class="m-muted">{{ r.description || '—' }}</td>
-            <td>
-              <div class="perm-row">
-                @for (p of permLabels(r); track p) {
-                  <span class="perm-chip">{{ p }}</span>
-                }
-                @if (permLabels(r).length === 0) {
-                  <span class="m-muted">— None —</span>
-                }
-              </div>
+            <td class="m-name">
+              {{ r.name }}
+              @if (r.isSystemAdmin) {
+                <span class="role-badge admin" pTooltip="Built-in system admin — bypasses every permission check" tooltipPosition="top">
+                  <i class="pi pi-shield"></i> System admin
+                </span>
+              } @else if (r.isSystem) {
+                <span class="role-badge system" pTooltip="Built-in role — can't be renamed or deleted" tooltipPosition="top">
+                  <i class="pi pi-lock"></i> Built-in
+                </span>
+              }
             </td>
+            <td class="m-muted">{{ r.description || '—' }}</td>
+            <td class="m-muted">{{ permSummary(r) }}</td>
+            <td>{{ r.assignedUserCount }}</td>
             <td>
               <p-tag [value]="r.isActive ? 'Active' : 'Inactive'"
                      [severity]="r.isActive ? 'success' : 'secondary'"
                      class="m-status-tag"></p-tag>
             </td>
-            <td class="m-muted">{{ r.createdAtUtc | date: 'MMM d, y' }}</td>
             <td class="m-actions">
-              <button class="m-icon-btn" (click)="openEdit(r)" pTooltip="Edit" tooltipPosition="top" aria-label="Edit">
-                <i class="pi pi-pencil"></i>
-              </button>
-              <button class="m-icon-btn danger" (click)="onDelete(r)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
-                <i class="pi pi-trash"></i>
-              </button>
+              <app-row-actions
+                [canEdit]="canEditRoles()"
+                [canDelete]="canDeleteRoles() && !r.isSystem"
+                [editLabel]="r.isSystemAdmin ? 'View permissions' : 'Edit'"
+                (edit)="openEdit(r)" (delete)="onDelete(r)"></app-row-actions>
             </td>
           </tr>
         </ng-template>
@@ -115,18 +85,33 @@
   </div>
 </section>
 
-<p-dialog
-  [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)"
-  [modal]="true" [draggable]="false" [resizable]="false"
-  [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
-  [style]="{ width: '560px' }"
-  [header]="editing() ? 'Edit Role' : 'Add Role'"
-  class="m-dialog">
+<app-form-dialog
+  [open]="dialogOpen()" (openChange)="dialogOpen.set($event)"
+  [editing]="!!editing()" [saving]="store.saving()"
+  [valid]="form.valid" entityLabel="Role" width="min(880px, 95vw)"
+  [headerOverride]="editing() ? (isEditingSystemAdmin ? 'System Admin role' : 'Edit Role') : 'Add Role'"
+  [showSave]="!isEditingSystemAdmin"
+  (save)="submit()">
   <form [formGroup]="form" (ngSubmit)="submit()" class="m-form">
-    <div class="m-field">
-      <label for="name">Role name <span class="req">*</span></label>
-      <input pInputText id="name" formControlName="name" placeholder="Supervisor" autocomplete="off" />
-      @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="name">Role name <span class="req">*</span></label>
+        <input pInputText id="name" formControlName="name" placeholder="Supervisor" autocomplete="off"
+               [readonly]="isEditingSystem" />
+        @if (isEditingSystem) {
+          <small class="m-muted">Built-in role — name is fixed.</small>
+        }
+        @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
+      </div>
+
+      <div class="m-field">
+        <label>Status</label>
+        <div class="m-switch-row">
+          <p-toggleswitch formControlName="isActive" inputId="isActive"
+                          [disabled]="isEditingSystemAdmin"></p-toggleswitch>
+          <span class="m-switch-label">{{ form.value.isActive ? 'Active' : 'Inactive' }}</span>
+        </div>
+      </div>
     </div>
 
     <div class="m-field">
@@ -135,31 +120,65 @@
                 placeholder="What this role is allowed to do"></textarea>
     </div>
 
+    <!-- Permission matrix -->
     <div class="m-field">
       <label>Permissions</label>
-      <div class="m-perm-grid">
-        <label><p-checkbox formControlName="canView" [binary]="true" inputId="canView"></p-checkbox> View</label>
-        <label><p-checkbox formControlName="canAdd" [binary]="true" inputId="canAdd"></p-checkbox> Add</label>
-        <label><p-checkbox formControlName="canEdit" [binary]="true" inputId="canEdit"></p-checkbox> Edit</label>
-        <label><p-checkbox formControlName="canDelete" [binary]="true" inputId="canDelete"></p-checkbox> Delete</label>
-        <label><p-checkbox formControlName="canViewReports" [binary]="true" inputId="canViewReports"></p-checkbox> View reports</label>
-      </div>
-    </div>
-
-    <div class="m-field">
-      <label>Status</label>
-      <div class="m-switch-row">
-        <p-toggleswitch formControlName="isActive" inputId="isActive"></p-toggleswitch>
-        <span class="m-switch-label">{{ form.value.isActive ? 'Active' : 'Inactive' }}</span>
-      </div>
+      @if (isEditingSystemAdmin) {
+        <div class="perm-banner admin">
+          <i class="pi pi-shield"></i>
+          <span>System admin holds every permission implicitly. The matrix is read-only.</span>
+        </div>
+      } @else if (!catalog()) {
+        <p-skeleton width="100%" height="14rem"></p-skeleton>
+      } @else {
+        <div class="perm-matrix-wrap">
+          <table class="perm-matrix">
+            <thead>
+              <tr>
+                <th class="perm-row-head">Resource</th>
+                @for (a of catalog()!.actions; track a.code) {
+                  <th class="perm-cell-head">
+                    {{ a.name }}
+                    <button type="button" class="perm-col-toggle"
+                            (click)="toggleAction(a.code, !actionFullySelected(a.code))"
+                            [class.on]="actionFullySelected(a.code)"
+                            pTooltip="Toggle column" tooltipPosition="top">
+                      <i class="pi" [class.pi-check]="actionFullySelected(a.code)" [class.pi-circle]="!actionFullySelected(a.code)"></i>
+                    </button>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of catalog()!.resources; track r.code) {
+                <tr>
+                  <td class="perm-row-head">
+                    <button type="button" class="perm-row-toggle"
+                            (click)="toggleResource(r.code, !resourceFullySelected(r.code))"
+                            [class.on]="resourceFullySelected(r.code)"
+                            [class.partial]="resourcePartiallySelected(r.code)"
+                            pTooltip="Toggle row" tooltipPosition="top">
+                      <i class="pi" [class.pi-check]="resourceFullySelected(r.code)"
+                                    [class.pi-minus]="resourcePartiallySelected(r.code)"
+                                    [class.pi-circle]="!resourceFullySelected(r.code) && !resourcePartiallySelected(r.code)"></i>
+                    </button>
+                    <span class="perm-row-name">{{ r.name }}</span>
+                  </td>
+                  @for (a of catalog()!.actions; track a.code) {
+                    <td class="perm-cell">
+                      <p-checkbox [binary]="true"
+                                  [ngModel]="isGranted(r.code, a.code)"
+                                  [ngModelOptions]="{ standalone: true }"
+                                  (ngModelChange)="toggleCell(r.code, a.code, $event)"
+                                  [inputId]="'p-' + r.code + '-' + a.code"></p-checkbox>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
   </form>
-
-  <ng-template #footer>
-    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="store.saving()" (onClick)="closeDialog()"></p-button>
-    <p-button [label]="editing() ? 'Save changes' : 'Add Role'"
-              [icon]="editing() ? 'pi pi-check' : 'pi pi-plus'"
-              [loading]="store.saving()" [disabled]="form.invalid"
-              (onClick)="submit()"></p-button>
-  </ng-template>
-</p-dialog>
+</app-form-dialog>

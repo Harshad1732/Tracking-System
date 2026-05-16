@@ -22,7 +22,15 @@ public record GlassSheetDto(
     string? BatchNo,
     string? Remarks,
     DateTime EntryAtUtc,
-    DateTime LastMovedAtUtc);
+    DateTime LastMovedAtUtc,
+    Guid? ReplacementForSheetId,
+    string? ReplacementForSheetNo,
+    string? ReplacementReason);
+
+public record SheetReplaceRequest(
+    [MaxLength(60)] string? SheetNo,
+    [Required, MaxLength(500)] string Reason,
+    int? Quantity);
 
 public record SheetCreateRequest(
     [Required, MaxLength(60)] string SheetNo,

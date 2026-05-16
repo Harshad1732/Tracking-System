@@ -1,0 +1,19 @@
+<p-dialog
+  [visible]="open" (visibleChange)="openChange.emit($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!saving" [closeOnEscape]="!saving"
+  [style]="{ width: width }"
+  [header]="header"
+  class="m-dialog">
+  <ng-content></ng-content>
+
+  <ng-template #footer>
+    <p-button [label]="showSave ? 'Cancel' : 'Close'" severity="secondary" [text]="true"
+              [disabled]="saving" (onClick)="close()"></p-button>
+    @if (showSave) {
+      <p-button [label]="saveLabel" [icon]="saveIcon"
+                [loading]="saving" [disabled]="!valid"
+                (onClick)="save.emit()"></p-button>
+    }
+  </ng-template>
+</p-dialog>

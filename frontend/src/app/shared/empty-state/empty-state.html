@@ -1,0 +1,13 @@
+<div class="m-empty" [class.subtle]="subtle">
+  <div class="m-empty-icon" [class.muted]="subtle"><i class="pi {{ icon }}"></i></div>
+  <h3>{{ title }}</h3>
+  @if (body) { <p>{{ body }}</p> }
+  @if (ctaLabel) {
+    @if (subtle) {
+      <p-button [label]="ctaLabel" [icon]="ctaIcon || 'pi pi-times'"
+                severity="secondary" [outlined]="true" (onClick)="cta.emit()"></p-button>
+    } @else {
+      <p-button [label]="ctaLabel" [icon]="ctaIcon || 'pi pi-plus'" (onClick)="cta.emit()"></p-button>
+    }
+  }
+</div>

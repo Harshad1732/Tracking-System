@@ -2,13 +2,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Tracker.Dtos;
 
-// Plants
+// Plants — Code is server-generated (e.g. PLT-001), not user-supplied.
 public record PlantDto(
     Guid Id, int Number, string Code, string Name, string? Address, string? Phone,
     bool IsActive, DateTime CreatedAtUtc);
 
 public record PlantUpsertRequest(
-    [Required, MaxLength(20)] string Code,
     [Required, MaxLength(120)] string Name,
     [MaxLength(250)] string? Address,
     [MaxLength(30)] string? Phone,
@@ -21,7 +20,6 @@ public record ProcessDto(
 
 public record ProcessUpsertRequest(
     [Required] Guid PlantId,
-    [Required, MaxLength(20)] string Code,
     [Required, MaxLength(120)] string Name,
     int SequenceNo,
     bool IsActive);
@@ -33,7 +31,6 @@ public record EmployeeDto(
     bool IsActive, DateTime CreatedAtUtc);
 
 public record EmployeeUpsertRequest(
-    [Required, MaxLength(20)] string Code,
     [Required, MaxLength(120)] string Name,
     [MaxLength(30)] string? Mobile,
     [MaxLength(60)] string? Department,
@@ -48,7 +45,6 @@ public record CustomerDto(
     string? Address, bool IsActive, DateTime CreatedAtUtc);
 
 public record CustomerUpsertRequest(
-    [Required, MaxLength(20)] string Code,
     [Required, MaxLength(120)] string Name,
     [MaxLength(120)] string? ContactPerson,
     [MaxLength(30)] string? Mobile,
@@ -56,35 +52,42 @@ public record CustomerUpsertRequest(
     [MaxLength(250)] string? Address,
     bool IsActive);
 
-// Roles
+// Roles — permissions are a list of (resource, action) pairs, not a 5-bit bitmap.
+public record RolePermissionDto(string Resource, string Action);
+
 public record RoleDto(
     Guid Id, int Number, string Name, string? Description,
-    bool CanView, bool CanAdd, bool CanEdit, bool CanDelete, bool CanViewReports,
-    bool IsActive, DateTime CreatedAtUtc);
+    bool IsSystem, bool IsSystemAdmin, bool IsActive,
+    IReadOnlyList<RolePermissionDto> Permissions,
+    int AssignedUserCount,
+    DateTime CreatedAtUtc);
 
 public record RoleUpsertRequest(
     [Required, MaxLength(60)] string Name,
     [MaxLength(250)] string? Description,
-    bool CanView,
-    bool CanAdd,
-    bool CanEdit,
-    bool CanDelete,
-    bool CanViewReports,
-    bool IsActive);
+    bool IsActive,
+    IReadOnlyList<RolePermissionDto> Permissions);
 
-// Shopfloors
+public record PermResourceDto(Guid Id, string Code, string Name, string? Description, int SortOrder, bool IsSystem);
+public record PermActionDto(Guid Id, string Code, string Name, int SortOrder, bool IsSystem);
+public record PermissionCatalogDto(
+    IReadOnlyList<PermResourceDto> Resources,
+    IReadOnlyList<PermActionDto> Actions);
+
+// Shopfloors — code is "STORAGE" / "SF1" / "SF2" generated per-plant.
 public record ShopfloorDto(
     Guid Id, int Number, string Code, string Name, int SequenceNo, bool IsStorage,
     string BatchMode,
     Guid? ProcessId, string? ProcessName,
     int SheetCount,
+    string? Color,
     bool IsActive, DateTime CreatedAtUtc);
 
 public record ShopfloorUpsertRequest(
-    [Required, MaxLength(20)] string Code,
     [Required, MaxLength(80)] string Name,
     int SequenceNo,
     bool IsStorage,
     [Required, MaxLength(20)] string BatchMode,
     Guid? ProcessId,
+    [MaxLength(7)] string? Color,
     bool IsActive);

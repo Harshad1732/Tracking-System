@@ -1,24 +1,22 @@
 <section class="m-page">
-  <header class="m-page-head">
-    <div class="m-page-head-text">
-      <span class="m-crumbs"><i class="pi pi-chart-bar"></i> Reports / Process-wise</span>
-      <h1>Process-wise Report</h1>
-      <p class="m-page-sub">
-        Sheet count grouped by shopfloor — spot bottlenecks at a glance.
-        @if (!shopfloors.loading()) {
-          <span class="m-count-chip">
-            <strong>{{ totalSheets() }}</strong> sheet{{ totalSheets() === 1 ? '' : 's' }} total
-          </span>
-        }
-      </p>
-    </div>
-    <div class="m-page-actions">
-      <p-button label="Export CSV" icon="pi pi-download" severity="secondary" [outlined]="true"
-                [loading]="exporting()" (onClick)="exportCsv()"></p-button>
-      <p-button label="Refresh" icon="pi pi-refresh" severity="secondary" [text]="true"
-                (onClick)="reload()"></p-button>
-    </div>
-  </header>
+  <app-page-header
+    icon="pi-chart-bar"
+    category="Reports"
+    section="Process-wise"
+    title="Process-wise Report"
+    subtitle="Sheet count grouped by shopfloor — spot bottlenecks at a glance.">
+    @if (!shopfloors.loading()) {
+      <ng-container chips>
+        <span class="page-chip">
+          <strong>{{ totalSheets() }}</strong> sheet{{ totalSheets() === 1 ? '' : 's' }} total
+        </span>
+      </ng-container>
+    }
+    <p-button actions label="Export CSV" icon="pi pi-download" severity="secondary" [outlined]="true"
+              [loading]="exporting()" (onClick)="exportCsv()"></p-button>
+    <p-button actions label="Refresh" icon="pi pi-refresh" severity="secondary" [text]="true"
+              (onClick)="reload()"></p-button>
+  </app-page-header>
 
   <div class="m-panel">
     @if (shopfloors.loading()) {
@@ -35,12 +33,9 @@
         }
       </div>
     } @else if (rows().length === 0) {
-      <div class="m-empty">
-        <div class="m-empty-icon"><i class="pi pi-list"></i></div>
-        <h3>No shopfloors configured</h3>
-        <p>Add shopfloors in the master to see the per-process breakdown.</p>
-        <p-button label="Open Shopfloor Master" icon="pi pi-arrow-right" routerLink="/masters/shopfloors"></p-button>
-      </div>
+      <app-empty-state icon="pi-list"
+        title="No shopfloors configured"
+        body="Add shopfloors in the master to see the per-process breakdown."></app-empty-state>
     } @else {
       <div class="proc-list">
         @for (r of rows(); track r.id) {

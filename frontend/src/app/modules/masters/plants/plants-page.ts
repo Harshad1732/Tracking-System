@@ -4,32 +4,37 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
-import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TagModule } from 'primeng/tag';
-import { TooltipModule } from 'primeng/tooltip';
-import { SkeletonModule } from 'primeng/skeleton';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { PlantsService } from '../plants.service';
 import { Plant } from '../master.types';
+import { AuthService } from '../../../auth/auth.service';
+import { PageHeaderComponent } from '../../../shared/page-header/page-header';
+import { SearchInputComponent } from '../../../shared/search-input/search-input';
+import { SkeletonTableComponent } from '../../../shared/skeleton-table/skeleton-table';
+import { EmptyStateComponent } from '../../../shared/empty-state/empty-state';
+import { RowActionsComponent } from '../../../shared/row-actions/row-actions';
+import { FormDialogComponent } from '../../../shared/form-dialog/form-dialog';
+import { HasPermDirective } from '../../../shared/has-perm.directive';
 
 @Component({
   selector: 'app-plants-page',
   imports: [
     ReactiveFormsModule, DatePipe,
-    ButtonModule, TableModule, DialogModule, InputTextModule, TextareaModule,
-    ToggleSwitchModule, TagModule, TooltipModule, SkeletonModule,
-    IconFieldModule, InputIconModule
+    PageHeaderComponent, SearchInputComponent, SkeletonTableComponent,
+    EmptyStateComponent, RowActionsComponent, FormDialogComponent, HasPermDirective,
+    ButtonModule, TableModule, InputTextModule, TextareaModule,
+    ToggleSwitchModule, TagModule
   ],
   templateUrl: './plants-page.html',
   styleUrl: './plants-page.scss'
 })
 export class PlantsPage implements OnInit {
   protected readonly store = inject(PlantsService);
+  protected readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly confirm = inject(ConfirmationService);
   private readonly toast = inject(MessageService);
@@ -40,7 +45,6 @@ export class PlantsPage implements OnInit {
   protected readonly skeletonRows = Array.from({ length: 5 });
 
   protected readonly form: FormGroup = this.fb.group({
-    code: ['', [Validators.required, Validators.maxLength(20)]],
     name: ['', [Validators.required, Validators.maxLength(120)]],
     address: ['', [Validators.maxLength(250)]],
     phone: ['', [Validators.maxLength(30)]],
@@ -65,14 +69,13 @@ export class PlantsPage implements OnInit {
 
   protected openAdd(): void {
     this.editing.set(null);
-    this.form.reset({ code: '', name: '', address: '', phone: '', isActive: true });
+    this.form.reset({ name: '', address: '', phone: '', isActive: true });
     this.dialogOpen.set(true);
   }
 
   protected openEdit(plant: Plant): void {
     this.editing.set(plant);
     this.form.reset({
-      code: plant.code,
       name: plant.name,
       address: plant.address ?? '',
       phone: plant.phone ?? '',
@@ -87,7 +90,7 @@ export class PlantsPage implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const v = this.form.getRawValue();
     const input = {
-      code: v.code, name: v.name,
+      name: v.name,
       address: v.address || null, phone: v.phone || null,
       isActive: v.isActive
     };

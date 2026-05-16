@@ -10,11 +10,14 @@ import { TooltipModule } from 'primeng/tooltip';
 import { SkeletonModule } from 'primeng/skeleton';
 import { MessageService } from 'primeng/api';
 import { ShopfloorsService } from '../masters/shopfloors.service';
+import { PageHeaderComponent } from '../../shared/page-header/page-header';
+import { EmptyStateComponent } from '../../shared/empty-state/empty-state';
 
 @Component({
   selector: 'app-process-report-page',
   imports: [
-    DecimalPipe, RouterLink, ButtonModule, TagModule, TooltipModule, SkeletonModule
+    DecimalPipe, RouterLink, ButtonModule, TagModule, TooltipModule, SkeletonModule,
+    PageHeaderComponent, EmptyStateComponent
   ],
   templateUrl: './process-report-page.html',
   styleUrl: './process-report-page.scss'

@@ -3,28 +3,34 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { HttpErrorResponse } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
-import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
-import { SkeletonModule } from 'primeng/skeleton';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ShopfloorsService } from '../shopfloors.service';
 import { ProcessesService } from '../processes.service';
 import { Shopfloor } from '../master.types';
+import { COLOR_CHOICES, floorTone } from '../floor-tones';
+import { AuthService } from '../../../auth/auth.service';
+import { PageHeaderComponent } from '../../../shared/page-header/page-header';
+import { SearchInputComponent } from '../../../shared/search-input/search-input';
+import { SkeletonTableComponent } from '../../../shared/skeleton-table/skeleton-table';
+import { EmptyStateComponent } from '../../../shared/empty-state/empty-state';
+import { RowActionsComponent } from '../../../shared/row-actions/row-actions';
+import { FormDialogComponent } from '../../../shared/form-dialog/form-dialog';
+import { HasPermDirective } from '../../../shared/has-perm.directive';
 
 @Component({
   selector: 'app-shopfloors-page',
   imports: [
     ReactiveFormsModule,
-    ButtonModule, TableModule, DialogModule, InputTextModule, InputNumberModule, SelectModule,
-    ToggleSwitchModule, TagModule, TooltipModule, SkeletonModule,
-    IconFieldModule, InputIconModule
+    PageHeaderComponent, SearchInputComponent, SkeletonTableComponent,
+    EmptyStateComponent, RowActionsComponent, FormDialogComponent, HasPermDirective,
+    ButtonModule, TableModule, InputTextModule, InputNumberModule, SelectModule,
+    ToggleSwitchModule, TagModule, TooltipModule
   ],
   templateUrl: './shopfloors-page.html',
   styleUrl: './shopfloors-page.scss'
@@ -32,6 +38,7 @@ import { Shopfloor } from '../master.types';
 export class ShopfloorsPage implements OnInit {
   protected readonly store = inject(ShopfloorsService);
   protected readonly processes = inject(ProcessesService);
+  protected readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly confirm = inject(ConfirmationService);
   private readonly toast = inject(MessageService);
@@ -42,14 +49,32 @@ export class ShopfloorsPage implements OnInit {
   protected readonly skeletonRows = Array.from({ length: 5 });
 
   protected readonly form: FormGroup = this.fb.group({
-    code: ['', [Validators.required, Validators.maxLength(20)]],
     name: ['', [Validators.required, Validators.maxLength(80)]],
     sequenceNo: [10, [Validators.required, Validators.min(0)]],
     isStorage: [false],
     batchMode: ['None' as 'None' | 'AutoConfirm' | 'Manual'],
     processId: [null as string | null],
+    color: [null as string | null],
     isActive: [true]
   });
+
+  protected readonly colorChoices = COLOR_CHOICES;
+
+  /** Tile preview that updates live as the user picks options in the dialog. */
+  protected previewTone(): { base: string; dark: string } {
+    const v = this.form.value;
+    return floorTone({
+      code: this.editing()?.code ?? 'NEW',
+      isStorage: !!v.isStorage,
+      sequenceNo: v.sequenceNo ?? 0,
+      color: v.color
+    });
+  }
+
+  /** Color shown for a shopfloor row in the table. */
+  protected rowTone(s: Shopfloor): { base: string; dark: string } {
+    return floorTone(s);
+  }
 
   protected readonly processOptions = computed(() => [
     { label: '— None —', value: null },
@@ -80,17 +105,19 @@ export class ShopfloorsPage implements OnInit {
 
   protected openAdd(): void {
     this.editing.set(null);
-    this.form.reset({ code: '', name: '', sequenceNo: 10, isStorage: false, batchMode: 'None', processId: null, isActive: true });
+    this.form.reset({ name: '', sequenceNo: 10, isStorage: false, batchMode: 'None', processId: null, color: null, isActive: true });
     this.dialogOpen.set(true);
   }
 
   protected openEdit(s: Shopfloor): void {
     this.editing.set(s);
     this.form.reset({
-      code: s.code, name: s.name,
+      name: s.name,
       sequenceNo: s.sequenceNo, isStorage: s.isStorage,
       batchMode: s.batchMode ?? 'None',
-      processId: s.processId, isActive: s.isActive
+      processId: s.processId,
+      color: s.color ?? null,
+      isActive: s.isActive
     });
     this.dialogOpen.set(true);
   }

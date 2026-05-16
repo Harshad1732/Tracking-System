@@ -1,0 +1,137 @@
+:host { display: block; }
+
+.page-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.05rem 1.4rem 1.15rem;
+  margin-bottom: 0.25rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+
+  // Subtle radial gradient that lifts the title bar slightly from the page surface.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(80% 120% at 0% 0%,
+        color-mix(in srgb, var(--color-primary) 8%, transparent) 0%,
+        transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  > * { position: relative; z-index: 1; }
+}
+
+.page-header-lead {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.page-header-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--ph-accent), var(--ph-accent-dark));
+  box-shadow:
+    0 6px 14px color-mix(in srgb, var(--ph-accent) 35%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  color: #fff;
+
+  i { font-size: 1.25rem; }
+}
+
+.page-header-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.page-header-crumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.page-header-crumb {
+  &.is-leaf { color: var(--color-primary-600); }
+}
+
+.page-header-sep { opacity: 0.5; }
+
+.page-header-title {
+  margin: 0.05rem 0 0;
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.page-header-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.page-header-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.4rem;
+  &:empty { display: none; }
+}
+
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  &:empty { display: none; }
+}
+
+.page-header-accent-bar {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--ph-accent) 90%, transparent),
+    color-mix(in srgb, var(--ph-accent-dark) 90%, transparent) 60%,
+    transparent);
+}
+
+@media (max-width: 720px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem 1.1rem 1.15rem;
+  }
+  .page-header-actions {
+    justify-content: flex-start;
+  }
+  .page-header-title { font-size: 1.35rem; }
+  .page-header-badge { width: 42px; height: 42px; i { font-size: 1.1rem; } }
+}

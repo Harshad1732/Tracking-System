@@ -1,0 +1,25 @@
+<table class="m-skeleton-table">
+  <thead>
+    <tr>
+      @for (c of columns; track c.label) {
+        <th [class.m-actions]="c.actions">{{ c.label }}</th>
+      }
+    </tr>
+  </thead>
+  <tbody>
+    @for (_ of rowArray(); track $index) {
+      <tr>
+        @for (c of columns; track c.label) {
+          @if (c.actions) {
+            <td class="m-actions">
+              <p-skeleton shape="circle" size="2rem"></p-skeleton>
+              <p-skeleton shape="circle" size="2rem"></p-skeleton>
+            </td>
+          } @else {
+            <td><p-skeleton [width]="c.width || '6rem'" height="1rem"></p-skeleton></td>
+          }
+        }
+      </tr>
+    }
+  </tbody>
+</table>

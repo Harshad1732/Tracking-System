@@ -270,6 +270,78 @@
   }
 }
 
+.plant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.8rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.1);
+  color: rgb(29, 78, 216);
+  font-weight: 600;
+  font-size: 0.85rem;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &:hover:not(.read-only) {
+    background: rgba(59, 130, 246, 0.18);
+  }
+
+  &.read-only {
+    cursor: default;
+    background: rgba(59, 130, 246, 0.08);
+  }
+
+  .plant-chip-name {
+    max-width: 14ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .plant-chip-caret {
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
+}
+
+@media (max-width: 700px) {
+  .plant-chip .plant-chip-name { display: none; }
+}
+
+.platform-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 1.25rem;
+  background: linear-gradient(90deg, rgba(99,102,241,0.12), rgba(168,85,247,0.12));
+  border-bottom: 1px solid rgba(99,102,241,0.25);
+  color: rgb(67, 56, 202);
+  font-size: 0.85rem;
+
+  .platform-bar-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: rgba(99,102,241,0.2);
+  }
+
+  .platform-bar-text strong { font-weight: 600; }
+
+  .platform-bar-link {
+    margin-left: auto;
+    color: rgb(67, 56, 202);
+    text-decoration: none;
+    font-weight: 600;
+    &:hover { text-decoration: underline; }
+  }
+}
+
 .icon-btn {
   position: relative;
   display: inline-flex;

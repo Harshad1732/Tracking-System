@@ -9,6 +9,10 @@ public class Batch
     public Guid TenantId { get; set; }
     public Tenant Tenant { get; set; } = null!;
 
+    /// <summary>Plant this batch belongs to. Inherited from the shopfloor it was formed on.</summary>
+    public Guid PlantId { get; set; }
+    public Plant Plant { get; set; } = null!;
+
     /// <summary>Sequential per-tenant display number. Auto-assigned on create.</summary>
     public int Number { get; set; }
 

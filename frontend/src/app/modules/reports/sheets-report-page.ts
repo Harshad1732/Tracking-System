@@ -15,11 +15,20 @@ import { SkeletonModule } from 'primeng/skeleton';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { TextareaModule } from 'primeng/textarea';
+import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { SheetsService } from '../tracking/sheets.service';
 import { ShopfloorsService } from '../masters/shopfloors.service';
 import { CustomersService } from '../masters/customers.service';
 import { GlassSheet } from '../masters/master.types';
+import { AuthService } from '../../auth/auth.service';
+import { PageHeaderComponent } from '../../shared/page-header/page-header';
+import { SearchInputComponent } from '../../shared/search-input/search-input';
+import { SkeletonTableComponent } from '../../shared/skeleton-table/skeleton-table';
+import { EmptyStateComponent } from '../../shared/empty-state/empty-state';
+import { SheetStatusesService } from '../../shared/sheet-statuses.service';
 
 export interface SheetsReportConfig {
   title: string;
@@ -35,8 +44,10 @@ export interface SheetsReportConfig {
   selector: 'app-sheets-report-page',
   imports: [
     DatePipe, FormsModule, RouterLink,
+    PageHeaderComponent, SearchInputComponent, SkeletonTableComponent, EmptyStateComponent,
     ButtonModule, TableModule, SelectModule, TagModule, TooltipModule,
-    SkeletonModule, IconFieldModule, InputIconModule, InputTextModule
+    SkeletonModule, InputTextModule,
+    InputNumberModule, TextareaModule, DialogModule
   ],
   templateUrl: './sheets-report-page.html',
   styleUrl: './sheets-report-page.scss'
@@ -45,11 +56,25 @@ export class SheetsReportPage implements OnInit, OnDestroy {
   protected readonly sheets = inject(SheetsService);
   protected readonly shopfloors = inject(ShopfloorsService);
   protected readonly customers = inject(CustomersService);
+  protected readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(MessageService);
 
   protected readonly exporting = signal(false);
+
+  // Replacement dialog state
+  protected readonly replaceOpen = signal(false);
+  protected readonly replaceTarget = signal<GlassSheet | null>(null);
+  protected readonly replaceForm = signal({ sheetNo: '', reason: '', quantity: null as number | null });
+  protected readonly replaceSaving = signal(false);
+
+  /** Whether a sheet can have a replacement issued. Driven by the SheetStatus.IsReplaceable
+   *  flag in the DB catalog, NOT by a hardcoded {Hold, Rejected} set. */
+  private readonly sheetStatuses = inject(SheetStatusesService);
+  protected canReplace(s: GlassSheet): boolean {
+    return this.sheetStatuses.canReplace(s.status) && this.auth.canAdd();
+  }
 
   protected readonly config = signal<SheetsReportConfig>({
     title: 'Report', description: '', icon: 'pi pi-th-large', crumbLabel: 'Report'
@@ -103,6 +128,7 @@ export class SheetsReportPage implements OnInit, OnDestroy {
     });
     void this.shopfloors.list().catch(() => {});
     void this.customers.list().catch(() => {});
+    void this.sheetStatuses.load().catch(() => {});
   }
 
   ngOnDestroy(): void { this.routeSub?.unsubscribe(); }
@@ -154,6 +180,47 @@ export class SheetsReportPage implements OnInit, OnDestroy {
       case 'Hold': return 'warn';
       case 'Rejected': return 'danger';
       default: return 'secondary';
+    }
+  }
+
+  protected openReplace(s: GlassSheet): void {
+    this.replaceTarget.set(s);
+    this.replaceForm.set({ sheetNo: '', reason: '', quantity: s.quantity });
+    this.replaceOpen.set(true);
+  }
+
+  protected closeReplace(): void {
+    this.replaceOpen.set(false);
+    this.replaceTarget.set(null);
+  }
+
+  protected async submitReplace(): Promise<void> {
+    const target = this.replaceTarget();
+    const form = this.replaceForm();
+    if (!target || !form.reason.trim()) return;
+
+    this.replaceSaving.set(true);
+    try {
+      const created = await this.sheets.replace(target.id, {
+        sheetNo: form.sheetNo.trim() || null,
+        reason: form.reason.trim(),
+        quantity: form.quantity ?? null
+      });
+      this.toast.add({
+        severity: 'success',
+        summary: 'Replacement created',
+        detail: `${created.sheetNo} added to Storage. The original (${target.sheetNo}) stays on the current floor.`,
+        life: 4000
+      });
+      this.replaceOpen.set(false);
+      this.replaceTarget.set(null);
+      // The new sheet starts in Storage, so this report (status=Hold/Rejected) is
+      // unchanged — no reload needed. The original still shows here with its history
+      // now annotated.
+    } catch (err) {
+      this.toastError(err, 'Could not create replacement.');
+    } finally {
+      this.replaceSaving.set(false);
     }
   }
 

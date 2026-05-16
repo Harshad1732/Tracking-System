@@ -1,0 +1,104 @@
+<section class="m-page">
+  <app-page-header
+    icon="pi-globe"
+    category="Platform"
+    section="Tenants"
+    title="All workspaces"
+    subtitle="Every tenant on the platform. Click Switch into to view a workspace as its owner would — your platform-admin token follows you.">
+    @if (!store.loading()) {
+      <ng-container chips>
+        <span class="page-chip"><strong>{{ store.tenants().length }}</strong> total</span>
+      </ng-container>
+    }
+  </app-page-header>
+
+  <div class="m-panel">
+    <div class="m-panel-head">
+      <app-search-input [value]="search()" (valueChange)="search.set($event)"
+                        placeholder="Search by name or slug…"></app-search-input>
+    </div>
+
+    @if (store.loading()) {
+      <app-skeleton-table [columns]="[
+        { label: 'Tenant', width: '10rem' },
+        { label: 'Slug', width: '6rem' },
+        { label: 'Plan', width: '4rem' },
+        { label: 'Subscription', width: '4rem' },
+        { label: 'Users', width: '2rem' },
+        { label: 'Floors', width: '2rem' },
+        { label: 'Sheets', width: '3rem' },
+        { label: 'Created', width: '6rem' },
+        { label: 'Status', width: '4rem' },
+        { label: 'Actions', actions: true }
+      ]" [rows]="5"></app-skeleton-table>
+    } @else if (filtered().length === 0 && store.tenants().length === 0) {
+      <app-empty-state icon="pi-globe"
+        title="No workspaces yet"
+        body="Workspaces appear here as soon as someone signs up on the platform."></app-empty-state>
+    } @else if (filtered().length === 0) {
+      <app-empty-state [subtle]="true" icon="pi-search"
+        [title]="'No matches for “' + search() + '”'"
+        ctaLabel="Clear search" ctaIcon="pi pi-times"
+        (cta)="clearSearch()"></app-empty-state>
+    } @else {
+      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '72rem' }">
+        <ng-template #header>
+          <tr>
+            <th>Tenant</th><th>Slug</th><th>Plan</th><th>Subscription</th>
+            <th class="m-mono">Users</th><th class="m-mono">Floors</th><th class="m-mono">Sheets</th>
+            <th>Created</th><th>Status</th><th class="m-actions">Actions</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-t>
+          <tr [class.is-current]="t.id === currentTenantId()">
+            <td class="m-name">
+              {{ t.name }}
+              @if (t.id === currentTenantId()) {
+                <span class="m-here-chip">You're here</span>
+              }
+            </td>
+            <td><span class="m-code">{{ t.slug }}</span></td>
+            <td>
+              @if (t.planCode) {
+                <p-tag [value]="t.planCode" [severity]="planSeverity(t.planCode)" class="m-status-tag"></p-tag>
+              } @else {
+                <span class="m-muted">—</span>
+              }
+            </td>
+            <td>
+              @if (t.subscriptionStatus) {
+                <p-tag [value]="t.subscriptionStatus" [severity]="statusSeverity(t.subscriptionStatus)" class="m-status-tag"></p-tag>
+              } @else {
+                <span class="m-muted">—</span>
+              }
+            </td>
+            <td class="m-mono">{{ t.userCount }}</td>
+            <td class="m-mono">{{ t.shopfloorCount }}</td>
+            <td class="m-mono">{{ t.sheetCount }}</td>
+            <td class="m-muted">{{ t.createdAtUtc | date: 'MMM d, y' }}</td>
+            <td>
+              <p-tag [value]="t.isActive ? 'Active' : 'Disabled'"
+                     [severity]="t.isActive ? 'success' : 'secondary'"
+                     class="m-status-tag"></p-tag>
+            </td>
+            <td class="m-actions">
+              <p-button label="Switch into" icon="pi pi-sign-in"
+                        size="small"
+                        [outlined]="true"
+                        [loading]="switching() === t.id"
+                        [disabled]="!t.isActive || t.id === currentTenantId()"
+                        (onClick)="switchTo(t)"
+                        pTooltip="Issue a new token bound to this tenant"
+                        tooltipPosition="left"></p-button>
+              <button class="m-icon-btn" (click)="toggleActive(t)"
+                      [pTooltip]="t.isActive ? 'Disable tenant' : 'Re-activate tenant'"
+                      tooltipPosition="left">
+                <i class="pi" [class.pi-ban]="t.isActive" [class.pi-check-circle]="!t.isActive"></i>
+              </button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</section>

@@ -153,7 +153,47 @@
 
 ::ng-deep .adm-pw input { width: 100%; }
 
+.adm-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-width: 22rem;
+}
+
+.adm-platform {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.45rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-primary-600);
+  background: var(--color-primary-50);
+  border-radius: var(--radius-sm);
+  i { font-size: 0.7rem; }
+}
+
+.assign-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.45rem;
+}
+
+.assign-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+
+  .assign-role, .assign-scope { width: 100%; }
+}
+
 @media (max-width: 800px) {
   .adm-ws-grid { grid-template-columns: 1fr; }
   .adm-panel-head { flex-direction: column; align-items: stretch; }
+  .assign-row { grid-template-columns: 1fr; }
 }

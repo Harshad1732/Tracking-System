@@ -13,7 +13,7 @@
     </div>
 
     <nav class="nav">
-      @for (node of nav; track node.labelKey) {
+      @for (node of currentNav(); track node.labelKey) {
         @if (isGroup(node)) {
           <button
             type="button"
@@ -76,6 +76,22 @@
       </div>
 
       <div class="topbar-right">
+        @if (auth.viewMode() === 'tenant' && plants.accessible().length > 0) {
+          <!-- Plant chip. Only clickable if the user has 2+ plants; otherwise it's a read-only indicator. -->
+          <button type="button" class="plant-chip"
+                  [class.read-only]="plants.accessible().length === 1 || auth.isPlantLocked()"
+                  (click)="(plants.accessible().length > 1 && !auth.isPlantLocked()) && openPlantMenu($event)"
+                  [pTooltip]="auth.isPlantLocked() ? 'You are assigned to this plant' : 'Switch plant'"
+                  tooltipPosition="bottom">
+            <i class="pi pi-building"></i>
+            <span class="plant-chip-name">{{ currentPlant()?.name ?? '—' }}</span>
+            @if (plants.accessible().length > 1 && !auth.isPlantLocked()) {
+              <i class="pi pi-chevron-down plant-chip-caret"></i>
+            }
+          </button>
+          <p-menu #plantMenu [model]="plantMenuItems()" [popup]="true" appendTo="body"></p-menu>
+        }
+
         <button type="button" class="icon-btn lang-chip" (click)="openLangMenu($event)"
                 [pTooltip]="('lang.label' | t)" tooltipPosition="bottom" aria-label="Language">
           <i class="pi pi-globe"></i>
@@ -101,6 +117,27 @@
         <p-menu #userMenu [model]="userMenuItems()" [popup]="true" appendTo="body"></p-menu>
       </div>
     </header>
+
+    @if (auth.isPlatformAdmin()) {
+      @if (auth.viewMode() === 'platform') {
+        <div class="platform-bar">
+          <span class="platform-bar-icon"><i class="pi pi-globe"></i></span>
+          <span class="platform-bar-text">
+            <strong>Platform admin</strong> · managing system
+          </span>
+        </div>
+      } @else if (auth.tenant(); as t) {
+        <div class="platform-bar">
+          <span class="platform-bar-icon"><i class="pi pi-globe"></i></span>
+          <span class="platform-bar-text">
+            Platform admin · viewing <strong>{{ t.name }}</strong>
+          </span>
+          <a href="javascript:void(0)" (click)="returnToPlatform()" class="platform-bar-link">
+            ← Return to platform
+          </a>
+        </div>
+      }
+    }
 
     <main class="content">
       <router-outlet />

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Tracker.Data;
 using Tracker.Dtos;
 using Tracker.Entities;
+using Tracker.Filters;
 using Tracker.Services;
 
 namespace Tracker.Controllers;
@@ -54,21 +55,23 @@ public class SubscriptionController : TenantControllerBase
     /// is suitable for sales demos and self-hosted deployments without a payment provider.
     /// </summary>
     [HttpPost("upgrade")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(Resources.Workspace, Actions.Edit)]
     public async Task<ActionResult<SubscriptionDto>> Upgrade(UpgradePlanRequest req, CancellationToken ct)
     {
         var plan = await _db.Plans.FirstOrDefaultAsync(p => p.Code == req.PlanCode && p.IsActive, ct);
         if (plan is null) return BadRequest(new { error = $"Plan '{req.PlanCode}' not found." });
 
         var sub = await _db.Subscriptions.FirstOrDefaultAsync(s => s.TenantId == TenantId, ct);
+        // Billing interval comes from the plan — single source of truth, no magic 1.
+        var intervalMonths = plan.BillingIntervalMonths > 0 ? plan.BillingIntervalMonths : 1;
         if (sub is null)
         {
             sub = new Subscription
             {
                 TenantId = TenantId,
                 PlanId = plan.Id,
-                Status = plan.MonthlyPriceCents == 0 ? "Active" : "Active",
-                CurrentPeriodEndsAtUtc = DateTime.UtcNow.AddMonths(1)
+                Status = "Active",
+                CurrentPeriodEndsAtUtc = DateTime.UtcNow.AddMonths(intervalMonths)
             };
             _db.Subscriptions.Add(sub);
         }
@@ -78,7 +81,7 @@ public class SubscriptionController : TenantControllerBase
             sub.Status = "Active";
             sub.TrialEndsAtUtc = null;
             sub.CanceledAtUtc = null;
-            sub.CurrentPeriodEndsAtUtc = DateTime.UtcNow.AddMonths(1);
+            sub.CurrentPeriodEndsAtUtc = DateTime.UtcNow.AddMonths(intervalMonths);
             sub.UpdatedAtUtc = DateTime.UtcNow;
         }
         await _db.SaveChangesAsync(ct);
@@ -86,7 +89,7 @@ public class SubscriptionController : TenantControllerBase
     }
 
     [HttpPost("cancel")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(Resources.Workspace, Actions.Edit)]
     public async Task<ActionResult<SubscriptionDto>> Cancel(CancellationToken ct)
     {
         var sub = await _db.Subscriptions.FirstOrDefaultAsync(s => s.TenantId == TenantId, ct);

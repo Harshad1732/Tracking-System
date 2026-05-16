@@ -26,6 +26,18 @@ public class AppDbContext : DbContext
     public DbSet<Plan> Plans => Set<Plan>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
 
+    public DbSet<ApplicationLog> ApplicationLogs => Set<ApplicationLog>();
+    public DbSet<SheetStatus> SheetStatuses => Set<SheetStatus>();
+
+    // RBAC matrix
+    public DbSet<PermResource> PermResources => Set<PermResource>();
+    public DbSet<PermAction> PermActions => Set<PermAction>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<UserRoleAssignment> UserRoleAssignments => Set<UserRoleAssignment>();
+    public DbSet<PlatformAdmin> PlatformAdmins => Set<PlatformAdmin>();
+    public DbSet<AuthAuditLog> AuthAuditLogs => Set<AuthAuditLog>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.Entity<Tenant>().HasIndex(t => t.Slug).IsUnique();
@@ -36,6 +48,9 @@ public class AppDbContext : DbContext
         b.Entity<User>()
             .HasOne(u => u.Tenant).WithMany(t => t.Users).HasForeignKey(u => u.TenantId)
             .OnDelete(DeleteBehavior.Cascade);
+        b.Entity<User>()
+            .HasOne(u => u.Plant).WithMany().HasForeignKey(u => u.PlantId)
+            .OnDelete(DeleteBehavior.ClientSetNull);
 
         b.Entity<RefreshToken>().HasIndex(t => t.TokenHash).IsUnique();
         b.Entity<RefreshToken>()
@@ -72,14 +87,21 @@ public class AppDbContext : DbContext
         b.Entity<RoleDefinition>().HasIndex(r => new { r.TenantId, r.Number }).IsUnique();
         b.Entity<RoleDefinition>().HasOne(r => r.Tenant).WithMany().HasForeignKey(r => r.TenantId).OnDelete(DeleteBehavior.Cascade);
 
-        b.Entity<Shopfloor>().HasIndex(s => new { s.TenantId, s.Code }).IsUnique();
+        // Shopfloor.Code is unique PER PLANT (not per tenant) so each plant can have its
+        // own SF1/SF2 without collisions.
+        b.Entity<Shopfloor>().HasIndex(s => new { s.PlantId, s.Code }).IsUnique();
         b.Entity<Shopfloor>().HasIndex(s => new { s.TenantId, s.Number }).IsUnique();
+        b.Entity<Shopfloor>().HasIndex(s => s.PlantId);
         b.Entity<Shopfloor>().HasOne(s => s.Tenant).WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<Shopfloor>().HasOne(s => s.Plant).WithMany().HasForeignKey(s => s.PlantId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<Shopfloor>().HasOne(s => s.Process).WithMany().HasForeignKey(s => s.ProcessId).OnDelete(DeleteBehavior.ClientSetNull);
 
         b.Entity<GlassSheet>().HasIndex(g => new { g.TenantId, g.SheetNo }).IsUnique();
         b.Entity<GlassSheet>().HasIndex(g => new { g.TenantId, g.Number }).IsUnique();
+        b.Entity<GlassSheet>().HasIndex(g => g.ReplacementForSheetId);
+        b.Entity<GlassSheet>().HasIndex(g => g.PlantId);
         b.Entity<GlassSheet>().HasOne(g => g.Tenant).WithMany().HasForeignKey(g => g.TenantId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<GlassSheet>().HasOne(g => g.Plant).WithMany().HasForeignKey(g => g.PlantId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<GlassSheet>().HasOne(g => g.Customer).WithMany().HasForeignKey(g => g.CustomerId).OnDelete(DeleteBehavior.ClientSetNull);
         b.Entity<GlassSheet>()
             .HasOne(g => g.CurrentShopfloor).WithMany().HasForeignKey(g => g.CurrentShopfloorId)
@@ -87,11 +109,20 @@ public class AppDbContext : DbContext
         b.Entity<GlassSheet>()
             .HasOne(g => g.Batch).WithMany(ba => ba.Sheets).HasForeignKey(g => g.BatchId)
             .OnDelete(DeleteBehavior.ClientSetNull);
+        // Self-FK to the original sheet that this one replaces. ClientSetNull because the
+        // original may legitimately be deleted later, and we don't want to lose the
+        // replacement record.
+        b.Entity<GlassSheet>()
+            .HasOne(g => g.ReplacementForSheet).WithMany()
+            .HasForeignKey(g => g.ReplacementForSheetId)
+            .OnDelete(DeleteBehavior.ClientSetNull);
 
         b.Entity<Batch>().HasIndex(ba => new { ba.TenantId, ba.BatchNo }).IsUnique();
         b.Entity<Batch>().HasIndex(ba => new { ba.TenantId, ba.Number }).IsUnique();
         b.Entity<Batch>().HasIndex(ba => ba.CurrentShopfloorId);
+        b.Entity<Batch>().HasIndex(ba => ba.PlantId);
         b.Entity<Batch>().HasOne(ba => ba.Tenant).WithMany().HasForeignKey(ba => ba.TenantId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<Batch>().HasOne(ba => ba.Plant).WithMany().HasForeignKey(ba => ba.PlantId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<Batch>()
             .HasOne(ba => ba.CurrentShopfloor).WithMany().HasForeignKey(ba => ba.CurrentShopfloorId)
             .OnDelete(DeleteBehavior.Restrict);
@@ -114,5 +145,62 @@ public class AppDbContext : DbContext
         b.Entity<SheetMovement>().HasOne(m => m.FromShopfloor).WithMany().HasForeignKey(m => m.FromShopfloorId).OnDelete(DeleteBehavior.ClientSetNull);
         b.Entity<SheetMovement>().HasOne(m => m.ToShopfloor).WithMany().HasForeignKey(m => m.ToShopfloorId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<SheetMovement>().HasOne(m => m.MovedByUser).WithMany().HasForeignKey(m => m.MovedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+
+        // ApplicationLogs is intentionally NOT FK-linked to Tenant/User — logs must
+        // survive even after the tenant or user they reference is deleted, since they
+        // record what happened. Indexes cover the common admin filter queries.
+        b.Entity<ApplicationLog>().HasIndex(l => l.CreatedAtUtc);
+        b.Entity<ApplicationLog>().HasIndex(l => new { l.TenantId, l.CreatedAtUtc });
+        b.Entity<ApplicationLog>().HasIndex(l => l.Level);
+
+        // ============================================================================
+        // RBAC matrix
+        // ============================================================================
+
+        b.Entity<PermResource>().HasIndex(r => r.Code).IsUnique();
+        b.Entity<PermAction>().HasIndex(a => a.Code).IsUnique();
+
+        b.Entity<Permission>()
+            .HasIndex(p => new { p.ResourceId, p.ActionId }).IsUnique();
+        b.Entity<Permission>()
+            .HasOne(p => p.Resource).WithMany().HasForeignKey(p => p.ResourceId)
+            .OnDelete(DeleteBehavior.Restrict);
+        b.Entity<Permission>()
+            .HasOne(p => p.Action).WithMany().HasForeignKey(p => p.ActionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<RolePermission>().HasKey(rp => new { rp.RoleId, rp.PermissionId });
+        b.Entity<RolePermission>()
+            .HasOne(rp => rp.Role).WithMany(r => r.Permissions).HasForeignKey(rp => rp.RoleId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.Entity<RolePermission>()
+            .HasOne(rp => rp.Permission).WithMany().HasForeignKey(rp => rp.PermissionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<UserRoleAssignment>()
+            .HasIndex(a => new { a.UserId, a.RoleId, a.ScopeType, a.ScopeId }).IsUnique();
+        b.Entity<UserRoleAssignment>().HasIndex(a => a.TenantId);
+        b.Entity<UserRoleAssignment>().HasIndex(a => a.UserId);
+        // Restrict on Tenant to avoid SQL Server multiple-cascade-path errors — the User
+        // cascade already removes assignments when a user is deleted.
+        b.Entity<UserRoleAssignment>()
+            .HasOne(a => a.Tenant).WithMany().HasForeignKey(a => a.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+        b.Entity<UserRoleAssignment>()
+            .HasOne(a => a.User).WithMany(u => u.RoleAssignments).HasForeignKey(a => a.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.Entity<UserRoleAssignment>()
+            .HasOne(a => a.Role).WithMany(r => r.Assignments).HasForeignKey(a => a.RoleId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<PlatformAdmin>().HasKey(pa => pa.UserId);
+        b.Entity<PlatformAdmin>()
+            .HasOne(pa => pa.User).WithMany().HasForeignKey(pa => pa.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<AuthAuditLog>().HasIndex(l => l.AtUtc);
+        b.Entity<AuthAuditLog>().HasIndex(l => new { l.TenantId, l.AtUtc });
+
+        b.Entity<SheetStatus>().HasIndex(s => s.Code).IsUnique();
     }
 }

@@ -21,6 +21,7 @@ import { DailyReportPage } from './modules/reports/daily-report-page';
 import { PlansPage } from './modules/billing/plans-page';
 import { BillingPage } from './modules/billing/billing-page';
 import { AdminPage } from './modules/admin/admin-page';
+import { PlatformPage } from './modules/platform/platform-page';
 import { authGuard } from './auth/auth.guards';
 
 const ph = (placeholder: PlaceholderConfig) => ({ placeholder });
@@ -88,13 +89,37 @@ export const routes: Routes = [
           description: 'Sheets that have been handed over to the customer.',
           apiStatus: 'Delivered'
       })},
+      { path: 'reports/on-hold', component: SheetsReportPage, data: report({
+          title: 'On Hold',
+          icon: 'pi pi-pause-circle',
+          crumbLabel: 'On Hold',
+          description: 'Sheets paused on the shopfloor — usually waiting on QC, parts, or a decision.',
+          apiStatus: 'Hold'
+      })},
+      { path: 'reports/rejected', component: SheetsReportPage, data: report({
+          title: 'Rejected',
+          icon: 'pi pi-times-circle',
+          crumbLabel: 'Rejected',
+          description: 'Sheets marked as defective or unusable. Use “Create replacement” to start a fresh sheet for the same order.',
+          apiStatus: 'Rejected'
+      })},
+      { path: 'reports/ready-to-dispatch', component: SheetsReportPage, data: report({
+          title: 'Ready for Dispatch',
+          icon: 'pi pi-check-circle',
+          crumbLabel: 'Ready for Dispatch',
+          description: 'Sheets completed on the last shopfloor and waiting to be handed to the customer.',
+          apiStatus: 'Completed'
+      })},
       { path: 'reports/process', component: ProcessReportPage },
       { path: 'reports/daily',   component: DailyReportPage, data: { scope: 'production' } },
       { path: 'reports/storage', component: DailyReportPage, data: { scope: 'storage' } },
 
       { path: 'billing', component: BillingPage },
 
-      { path: 'administration', component: AdminPage }
+      { path: 'administration', component: AdminPage },
+
+      // Platform-admin-only: cross-tenant control panel.
+      { path: 'platform/tenants', component: PlatformPage }
     ]
   },
 

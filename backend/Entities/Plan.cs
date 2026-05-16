@@ -35,4 +35,19 @@ public class Plan
     /// <summary>Optional Stripe Price ID for upgrade checkout sessions.</summary>
     [MaxLength(120)]
     public string? StripePriceId { get; set; }
+
+    /// <summary>How long the free trial lasts when a tenant signs up on this plan.
+    /// 0 = no trial (paid plans). Replaces the old hardcoded "14 days everywhere".</summary>
+    public int TrialDays { get; set; }
+
+    /// <summary>Length of each billing period in months. Default 1 (monthly).
+    /// Replaces the old hardcoded <c>DateTime.UtcNow.AddMonths(1)</c>.</summary>
+    public int BillingIntervalMonths { get; set; } = 1;
+
+    /// <summary>
+    /// Exactly one plan should be flagged true — it's the plan a brand-new tenant lands
+    /// on when registering via the public sign-up flow. Replaces the hardcoded
+    /// <c>p.Code == "free"</c> lookup in AuthService. Toggleable from the Plans UI.
+    /// </summary>
+    public bool IsDefaultOnSignup { get; set; }
 }

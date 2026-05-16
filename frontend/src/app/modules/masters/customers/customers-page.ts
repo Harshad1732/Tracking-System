@@ -3,32 +3,37 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { HttpErrorResponse } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
-import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TagModule } from 'primeng/tag';
-import { TooltipModule } from 'primeng/tooltip';
-import { SkeletonModule } from 'primeng/skeleton';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { CustomersService } from '../customers.service';
 import { Customer } from '../master.types';
+import { AuthService } from '../../../auth/auth.service';
+import { PageHeaderComponent } from '../../../shared/page-header/page-header';
+import { SearchInputComponent } from '../../../shared/search-input/search-input';
+import { SkeletonTableComponent } from '../../../shared/skeleton-table/skeleton-table';
+import { EmptyStateComponent } from '../../../shared/empty-state/empty-state';
+import { RowActionsComponent } from '../../../shared/row-actions/row-actions';
+import { FormDialogComponent } from '../../../shared/form-dialog/form-dialog';
+import { HasPermDirective } from '../../../shared/has-perm.directive';
 
 @Component({
   selector: 'app-customers-page',
   imports: [
     ReactiveFormsModule,
-    ButtonModule, TableModule, DialogModule, InputTextModule, TextareaModule,
-    ToggleSwitchModule, TagModule, TooltipModule, SkeletonModule,
-    IconFieldModule, InputIconModule
+    PageHeaderComponent, SearchInputComponent, SkeletonTableComponent,
+    EmptyStateComponent, RowActionsComponent, FormDialogComponent, HasPermDirective,
+    ButtonModule, TableModule, InputTextModule, TextareaModule,
+    ToggleSwitchModule, TagModule
   ],
   templateUrl: './customers-page.html',
   styleUrl: './customers-page.scss'
 })
 export class CustomersPage implements OnInit {
   protected readonly store = inject(CustomersService);
+  protected readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly confirm = inject(ConfirmationService);
   private readonly toast = inject(MessageService);
@@ -39,7 +44,6 @@ export class CustomersPage implements OnInit {
   protected readonly skeletonRows = Array.from({ length: 5 });
 
   protected readonly form: FormGroup = this.fb.group({
-    code: ['', [Validators.required, Validators.maxLength(20)]],
     name: ['', [Validators.required, Validators.maxLength(120)]],
     contactPerson: ['', [Validators.maxLength(120)]],
     mobile: ['', [Validators.maxLength(30)]],
@@ -68,7 +72,7 @@ export class CustomersPage implements OnInit {
   protected openAdd(): void {
     this.editing.set(null);
     this.form.reset({
-      code: '', name: '', contactPerson: '', mobile: '', email: '', address: '', isActive: true
+      name: '', contactPerson: '', mobile: '', email: '', address: '', isActive: true
     });
     this.dialogOpen.set(true);
   }
@@ -76,7 +80,7 @@ export class CustomersPage implements OnInit {
   protected openEdit(c: Customer): void {
     this.editing.set(c);
     this.form.reset({
-      code: c.code, name: c.name,
+      name: c.name,
       contactPerson: c.contactPerson ?? '',
       mobile: c.mobile ?? '',
       email: c.email ?? '',
@@ -92,7 +96,7 @@ export class CustomersPage implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const v = this.form.getRawValue();
     const input = {
-      code: v.code, name: v.name,
+      name: v.name,
       contactPerson: v.contactPerson || null,
       mobile: v.mobile || null,
       email: v.email || null,

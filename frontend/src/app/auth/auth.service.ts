@@ -2,9 +2,12 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { AuthResponse, TenantDto, UserDto } from './auth.types';
+import { ACTIONS, AuthResponse, hasPermission, TenantDto, UserDto } from './auth.types';
 
 const STORAGE_KEY = 'tracker.auth';
+const VIEW_MODE_KEY = 'tracker.viewMode';
+
+export type ViewMode = 'platform' | 'tenant';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -15,23 +18,72 @@ export class AuthService {
   readonly user = computed<UserDto | null>(() => this.authState()?.user ?? null);
   readonly tenant = computed<TenantDto | null>(() => this.authState()?.tenant ?? null);
   readonly isAuthenticated = computed(() => this.authState() !== null);
-  readonly role = computed(() => this.authState()?.user.role ?? null);
+
+  /** First role name on the user, kept for badges/labels. UI gating should use `has()`. */
+  readonly role = computed(() => this.user()?.roles?.[0] ?? null);
+  readonly roles = computed(() => this.user()?.roles ?? []);
+
+  readonly isSystemAdmin = computed(() => this.user()?.isSystemAdmin === true);
+  readonly isPlatformAdmin = computed(() => this.user()?.isPlatformAdmin === true);
+  readonly currentPlantId  = computed(() => this.user()?.currentPlantId ?? null);
+  readonly lockedPlantId   = computed(() => this.user()?.lockedPlantId ?? null);
+  readonly isPlantLocked   = computed(() => this.lockedPlantId() !== null);
+
+  /** Per-resource permission check. Use this for new code. */
+  has(resource: string, action: string): boolean {
+    const u = this.user();
+    if (!u) return false;
+    if (u.isSystemAdmin || u.isPlatformAdmin) return true;
+    return hasPermission(u.permissions, resource, action);
+  }
+
+  /**
+   * Back-compat shortcuts. Return true if the user has the action on ANY resource.
+   * Existing templates use these for generic button gating; the server enforces the
+   * real per-resource check. New code should call `has(resource, action)` instead.
+   */
+  readonly canAdd        = computed(() => this.anyResourceAction(ACTIONS.Add));
+  readonly canEdit       = computed(() => this.anyResourceAction(ACTIONS.Edit));
+  readonly canDelete     = computed(() => this.anyResourceAction(ACTIONS.Delete));
+  readonly canViewReports = computed(() =>
+    this.isSystemAdmin() || this.isPlatformAdmin() ||
+    this.user()?.permissions.some(p => p.resource === 'Reports' && p.action === ACTIONS.View) === true);
+
+  private anyResourceAction(action: string): boolean {
+    const u = this.user();
+    if (!u) return false;
+    if (u.isSystemAdmin || u.isPlatformAdmin) return true;
+    return u.permissions.some(p => p.action === action);
+  }
+
+  private readonly viewModeSignal = signal<ViewMode>(this.loadViewMode());
+  readonly viewMode = this.viewModeSignal.asReadonly();
+
+  setViewMode(mode: ViewMode): void {
+    this.viewModeSignal.set(mode);
+    try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch { /* ignore */ }
+  }
 
   register(payload: { email: string; password: string; fullName?: string; tenantName: string }):
     Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.api}/auth/register`, payload)
-      .pipe(tap(r => this.setAuth(r)));
+      .pipe(tap(r => this.acceptFreshAuth(r)));
   }
 
   login(tenantSlug: string, email: string, password: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.api}/auth/login`, { tenantSlug, email, password })
-      .pipe(tap(r => this.setAuth(r)));
+      .pipe(tap(r => this.acceptFreshAuth(r)));
   }
 
   refresh(): Observable<AuthResponse> {
     const refreshToken = this.authState()?.refreshToken;
     return this.http.post<AuthResponse>(`${this.api}/auth/refresh`, { refreshToken })
       .pipe(tap(r => this.setAuth(r)));
+  }
+
+  private acceptFreshAuth(r: AuthResponse): void {
+    this.setAuth(r);
+    this.setViewMode(r.user.isPlatformAdmin ? 'platform' : 'tenant');
   }
 
   logout(): Observable<void> {
@@ -50,12 +102,12 @@ export class AuthService {
 
   google(tenantSlug: string, idToken: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.api}/auth/google`, { tenantSlug, idToken })
-      .pipe(tap(r => this.setAuth(r)));
+      .pipe(tap(r => this.acceptFreshAuth(r)));
   }
 
   microsoft(tenantSlug: string, idToken: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.api}/auth/microsoft`, { tenantSlug, idToken })
-      .pipe(tap(r => this.setAuth(r)));
+      .pipe(tap(r => this.acceptFreshAuth(r)));
   }
 
   accessToken(): string | null { return this.authState()?.accessToken ?? null; }
@@ -69,12 +121,29 @@ export class AuthService {
   clear(): void {
     this.authState.set(null);
     localStorage.removeItem(STORAGE_KEY);
+    this.setViewMode('tenant');
+  }
+
+  private loadViewMode(): ViewMode {
+    try {
+      const v = localStorage.getItem(VIEW_MODE_KEY);
+      if (v === 'platform' || v === 'tenant') return v;
+    } catch { /* ignore */ }
+    return 'tenant';
   }
 
   private load(): AuthResponse | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    try { return JSON.parse(raw) as AuthResponse; } catch { return null; }
+    try {
+      const parsed = JSON.parse(raw) as AuthResponse;
+      // Defensive: old payloads (saved before the matrix rewrite) carried a different
+      // shape. Force a refresh by clearing — interceptor will re-issue via /refresh.
+      if (parsed?.user && !Array.isArray((parsed.user as unknown as { permissions?: unknown }).permissions)) {
+        return null;
+      }
+      return parsed;
+    } catch { return null; }
   }
 
   seedFakeAuth(): void {
@@ -91,7 +160,12 @@ export class AuthService {
         id: '00000000-0000-0000-0000-000000000001',
         email: 'admin@tracker.local',
         fullName: 'Tracker Admin',
-        role: 'Admin'
+        roles: ['Admin'],
+        isSystemAdmin: true,
+        isPlatformAdmin: true,
+        permissions: [],
+        lockedPlantId: null,
+        currentPlantId: '00000000-0000-0000-0000-000000000002'
       },
       tenant: {
         id: '00000000-0000-0000-0000-000000000001',

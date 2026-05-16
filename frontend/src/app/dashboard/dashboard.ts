@@ -142,12 +142,12 @@ export class Dashboard implements OnInit {
   protected readonly alerts = computed<AlertRow[]>(() => {
     const s = this.stats();
     return [
-      { key: 'hold',      label: 'On hold',           count: s.byStatus['Hold'] ?? 0,      icon: 'pi pi-pause-circle',     tone: 'warn',    link: ['/reports/shopfloor'] },
-      { key: 'rejected',  label: 'Rejected',          count: s.byStatus['Rejected'] ?? 0,  icon: 'pi pi-times-circle',     tone: 'danger',  link: ['/reports/shopfloor'] },
-      { key: 'completed', label: 'Ready for dispatch',count: s.byStatus['Completed'] ?? 0, icon: 'pi pi-check-circle',     tone: 'success', link: ['/reports/shopfloor'] },
-      { key: 'pending',   label: 'Pending start',     count: s.byStatus['Pending'] ?? 0,   icon: 'pi pi-hourglass',        tone: 'info',    link: ['/reports/storage'] },
-      { key: 'movements', label: 'Movements today',   count: s.movementsToday,             icon: 'pi pi-arrow-right',      tone: 'neutral', link: ['/reports/daily'] },
-      { key: 'added',     label: 'Added today',       count: s.sheetsAddedToday,           icon: 'pi pi-plus-circle',      tone: 'neutral', link: ['/reports/storage'] }
+      { key: 'hold',      label: 'On hold',            count: s.byStatus['Hold'] ?? 0,      icon: 'pi pi-pause-circle',     tone: 'warn',    link: ['/reports/on-hold'] },
+      { key: 'rejected',  label: 'Rejected',           count: s.byStatus['Rejected'] ?? 0,  icon: 'pi pi-times-circle',     tone: 'danger',  link: ['/reports/rejected'] },
+      { key: 'completed', label: 'Ready for dispatch', count: s.byStatus['Completed'] ?? 0, icon: 'pi pi-check-circle',     tone: 'success', link: ['/reports/ready-to-dispatch'] },
+      { key: 'delivered', label: 'Delivered',          count: s.byStatus['Delivered'] ?? 0, icon: 'pi pi-truck',            tone: 'info',    link: ['/reports/delivered'] },
+      { key: 'movements', label: 'Movements today',    count: s.movementsToday,             icon: 'pi pi-arrow-right',      tone: 'neutral', link: ['/reports/daily'] },
+      { key: 'added',     label: 'Added today',        count: s.sheetsAddedToday,           icon: 'pi pi-plus-circle',      tone: 'neutral', link: ['/reports/storage'] }
     ];
   });
 

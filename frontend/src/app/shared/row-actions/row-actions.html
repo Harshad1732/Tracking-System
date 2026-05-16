@@ -1,0 +1,13 @@
+@if (canEdit) {
+  <button class="m-icon-btn" type="button" (click)="edit.emit()"
+          [pTooltip]="editLabel" tooltipPosition="top" [attr.aria-label]="editLabel">
+    <i class="pi pi-pencil"></i>
+  </button>
+}
+@if (canDelete) {
+  <button class="m-icon-btn danger" type="button" (click)="delete.emit()"
+          [pTooltip]="deleteLabel" tooltipPosition="top" [attr.aria-label]="deleteLabel"
+          [disabled]="deleteDisabled">
+    <i class="pi pi-trash"></i>
+  </button>
+}

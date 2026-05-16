@@ -3,28 +3,32 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { HttpErrorResponse } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
-import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TagModule } from 'primeng/tag';
-import { TooltipModule } from 'primeng/tooltip';
-import { SkeletonModule } from 'primeng/skeleton';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { EmployeesService } from '../employees.service';
 import { PlantsService } from '../plants.service';
 import { ProcessesService } from '../processes.service';
 import { Employee } from '../master.types';
+import { AuthService } from '../../../auth/auth.service';
+import { PageHeaderComponent } from '../../../shared/page-header/page-header';
+import { SearchInputComponent } from '../../../shared/search-input/search-input';
+import { SkeletonTableComponent } from '../../../shared/skeleton-table/skeleton-table';
+import { EmptyStateComponent } from '../../../shared/empty-state/empty-state';
+import { RowActionsComponent } from '../../../shared/row-actions/row-actions';
+import { FormDialogComponent } from '../../../shared/form-dialog/form-dialog';
+import { HasPermDirective } from '../../../shared/has-perm.directive';
 
 @Component({
   selector: 'app-employees-page',
   imports: [
     ReactiveFormsModule,
-    ButtonModule, TableModule, DialogModule, InputTextModule, SelectModule,
-    ToggleSwitchModule, TagModule, TooltipModule, SkeletonModule,
-    IconFieldModule, InputIconModule
+    PageHeaderComponent, SearchInputComponent, SkeletonTableComponent,
+    EmptyStateComponent, RowActionsComponent, FormDialogComponent, HasPermDirective,
+    ButtonModule, TableModule, InputTextModule, SelectModule,
+    ToggleSwitchModule, TagModule
   ],
   templateUrl: './employees-page.html',
   styleUrl: './employees-page.scss'
@@ -33,6 +37,7 @@ export class EmployeesPage implements OnInit {
   protected readonly store = inject(EmployeesService);
   protected readonly plants = inject(PlantsService);
   protected readonly processes = inject(ProcessesService);
+  protected readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly confirm = inject(ConfirmationService);
   private readonly toast = inject(MessageService);
@@ -43,7 +48,6 @@ export class EmployeesPage implements OnInit {
   protected readonly skeletonRows = Array.from({ length: 6 });
 
   protected readonly form: FormGroup = this.fb.group({
-    code: ['', [Validators.required, Validators.maxLength(20)]],
     name: ['', [Validators.required, Validators.maxLength(120)]],
     mobile: ['', [Validators.maxLength(30)]],
     department: ['', [Validators.maxLength(60)]],
@@ -92,7 +96,7 @@ export class EmployeesPage implements OnInit {
   protected openAdd(): void {
     this.editing.set(null);
     this.form.reset({
-      code: '', name: '', mobile: '', department: '', designation: '',
+      name: '', mobile: '', department: '', designation: '',
       plantId: null, processId: null, isActive: true
     });
     this.dialogOpen.set(true);
@@ -101,7 +105,7 @@ export class EmployeesPage implements OnInit {
   protected openEdit(e: Employee): void {
     this.editing.set(e);
     this.form.reset({
-      code: e.code, name: e.name,
+      name: e.name,
       mobile: e.mobile ?? '', department: e.department ?? '', designation: e.designation ?? '',
       plantId: e.plantId, processId: e.processId,
       isActive: e.isActive
@@ -125,7 +129,7 @@ export class EmployeesPage implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const v = this.form.getRawValue();
     const input = {
-      code: v.code, name: v.name,
+      name: v.name,
       mobile: v.mobile || null,
       department: v.department || null,
       designation: v.designation || null,

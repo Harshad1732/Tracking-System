@@ -27,6 +27,7 @@ import { floorTone, FloorTone } from '../masters/floor-tones';
 import { Batch, GlassSheet, Shopfloor, SheetCreateInput, SheetMovement } from '../masters/master.types';
 import { I18nService } from '../../shared/i18n/i18n.service';
 import { TPipe } from '../../shared/i18n/t.pipe';
+import { AuthService } from '../../auth/auth.service';
 
 const NEUTRAL_TONE: FloorTone = { base: '#475569', dark: '#1f2937', bg: '#f1f5f9', text: '#475569' };
 
@@ -60,6 +61,7 @@ export class ShopfloorPage implements OnInit, OnDestroy {
   protected readonly shopfloors = inject(ShopfloorsService);
   protected readonly customers = inject(CustomersService);
   protected readonly i18n = inject(I18nService);
+  protected readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
   private readonly confirm = inject(ConfirmationService);

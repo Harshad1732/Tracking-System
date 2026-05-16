@@ -7,10 +7,11 @@ import { TagModule } from 'primeng/tag';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { SubscriptionService } from './subscription.service';
+import { PageHeaderComponent } from '../../shared/page-header/page-header';
 
 @Component({
   selector: 'app-billing-page',
-  imports: [DatePipe, DecimalPipe, RouterLink, ButtonModule, TagModule, SkeletonModule],
+  imports: [DatePipe, DecimalPipe, RouterLink, ButtonModule, TagModule, SkeletonModule, PageHeaderComponent],
   templateUrl: './billing-page.html',
   styleUrl: './billing-page.scss'
 })
