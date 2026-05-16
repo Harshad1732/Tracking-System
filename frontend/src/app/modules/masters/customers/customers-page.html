@@ -1,0 +1,170 @@
+<section class="m-page">
+  <header class="m-page-head">
+    <div class="m-page-head-text">
+      <span class="m-crumbs"><i class="pi pi-database"></i> Masters / Customer Master</span>
+      <h1>Customers</h1>
+      <p class="m-page-sub">
+        Customers whose orders flow through the shopfloor.
+        @if (!store.loading()) {
+          <span class="m-count-chip">
+            <strong>{{ store.items().length }}</strong> total ·
+            <strong>{{ store.activeCount() }}</strong> active
+          </span>
+        }
+      </p>
+    </div>
+    <div class="m-page-actions">
+      <p-button label="Add Customer" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+    </div>
+  </header>
+
+  <div class="m-panel">
+    <div class="m-panel-head">
+      <p-iconfield iconPosition="left" class="m-search">
+        <p-inputicon class="pi pi-search"></p-inputicon>
+        <input pInputText type="text"
+               placeholder="Search by code, name, contact, email..."
+               [value]="search()"
+               (input)="search.set($any($event.target).value)" />
+        @if (search()) {
+          <button class="m-clear-btn" (click)="clearSearch()" type="button" aria-label="Clear search">
+            <i class="pi pi-times"></i>
+          </button>
+        }
+      </p-iconfield>
+    </div>
+
+    @if (store.loading()) {
+      <table class="m-skeleton-table">
+        <thead>
+          <tr>
+            <th>Code</th><th>Customer Name</th><th>Contact Person</th><th>Mobile</th>
+            <th>Email</th><th>Status</th><th class="m-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (_ of skeletonRows; track $index) {
+            <tr>
+              <td><p-skeleton width="4rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="10rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="8rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="7rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="10rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
+              <td class="m-actions">
+                <p-skeleton shape="circle" size="2rem"></p-skeleton>
+                <p-skeleton shape="circle" size="2rem"></p-skeleton>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (filtered().length === 0 && store.items().length === 0) {
+      <div class="m-empty">
+        <div class="m-empty-icon"><i class="pi pi-users"></i></div>
+        <h3>No customers yet</h3>
+        <p>Add customers so sheets can be linked to who they belong to.</p>
+        <p-button label="Add first customer" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+      </div>
+    } @else if (filtered().length === 0) {
+      <div class="m-empty subtle">
+        <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
+        <h3>No customers match “{{ search() }}”</h3>
+        <p>Try a different keyword or clear the search.</p>
+        <p-button label="Clear search" icon="pi pi-times" severity="secondary" [outlined]="true" (onClick)="clearSearch()"></p-button>
+      </div>
+    } @else {
+      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '60rem' }">
+        <ng-template #header>
+          <tr>
+            <th>Code</th><th>Customer Name</th><th>Contact Person</th><th>Mobile</th>
+            <th>Email</th><th>Status</th><th class="m-actions">Actions</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-c>
+          <tr>
+            <td><span class="m-code">{{ c.code }}</span></td>
+            <td class="m-name">{{ c.name }}</td>
+            <td class="m-muted">{{ c.contactPerson || '—' }}</td>
+            <td class="m-mono">{{ c.mobile || '—' }}</td>
+            <td class="m-muted">{{ c.email || '—' }}</td>
+            <td>
+              <p-tag [value]="c.isActive ? 'Active' : 'Inactive'"
+                     [severity]="c.isActive ? 'success' : 'secondary'"
+                     class="m-status-tag"></p-tag>
+            </td>
+            <td class="m-actions">
+              <button class="m-icon-btn" (click)="openEdit(c)" pTooltip="Edit" tooltipPosition="top" aria-label="Edit">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="m-icon-btn danger" (click)="onDelete(c)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
+                <i class="pi pi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</section>
+
+<p-dialog
+  [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
+  [style]="{ width: '600px' }"
+  [header]="editing() ? 'Edit Customer' : 'Add Customer'"
+  class="m-dialog">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="m-form">
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="code">Code <span class="req">*</span></label>
+        <input pInputText id="code" formControlName="code" placeholder="CUS-001" autocomplete="off" />
+        @if (hasError('code', 'required')) { <small class="err">Code is required.</small> }
+      </div>
+      <div class="m-field">
+        <label for="name">Customer name <span class="req">*</span></label>
+        <input pInputText id="name" formControlName="name" placeholder="ABC Builders" autocomplete="off" />
+        @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
+      </div>
+    </div>
+
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="contactPerson">Contact person</label>
+        <input pInputText id="contactPerson" formControlName="contactPerson" placeholder="Project manager" autocomplete="off" />
+      </div>
+      <div class="m-field">
+        <label for="mobile">Mobile</label>
+        <input pInputText id="mobile" formControlName="mobile" placeholder="+91 98765 43210" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="m-field">
+      <label for="email">Email</label>
+      <input pInputText id="email" formControlName="email" placeholder="ops@example.com" autocomplete="off" />
+      @if (hasError('email', 'email')) { <small class="err">Enter a valid email.</small> }
+    </div>
+
+    <div class="m-field">
+      <label for="address">Address</label>
+      <textarea pTextarea id="address" formControlName="address" rows="2" placeholder="Site address / billing address"></textarea>
+    </div>
+
+    <div class="m-field">
+      <label>Status</label>
+      <div class="m-switch-row">
+        <p-toggleswitch formControlName="isActive" inputId="isActive"></p-toggleswitch>
+        <span class="m-switch-label">{{ form.value.isActive ? 'Active' : 'Inactive' }}</span>
+      </div>
+    </div>
+  </form>
+
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="store.saving()" (onClick)="closeDialog()"></p-button>
+    <p-button [label]="editing() ? 'Save changes' : 'Add Customer'"
+              [icon]="editing() ? 'pi pi-check' : 'pi pi-plus'"
+              [loading]="store.saving()" [disabled]="form.invalid"
+              (onClick)="submit()"></p-button>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,659 @@
+<section class="m-page">
+  @if (!currentShopfloor() && !shopfloors.loading()) {
+    <div class="m-panel">
+      <div class="m-empty">
+        <div class="m-empty-icon muted"><i class="pi pi-exclamation-triangle"></i></div>
+        <h3>Unknown shopfloor</h3>
+        <p>The shopfloor <strong>{{ code() }}</strong> does not exist. Add it in the
+          <a routerLink="/masters/shopfloors">Shopfloor master</a>.</p>
+      </div>
+    </div>
+  } @else {
+    <div class="sf-back-row">
+      <a routerLink="/shopfloors" class="sf-back">
+        <i class="pi pi-arrow-left"></i>
+        <span>{{ 'sf.back_to_workspace' | t }}</span>
+      </a>
+    </div>
+    <header class="m-page-head sf-head"
+            [style.--floor-base]="floorTone().base"
+            [style.--floor-dark]="floorTone().dark"
+            [style.--floor-bg]="floorTone().bg"
+            [style.--floor-text]="floorTone().text">
+      <div class="sf-head-stripe" aria-hidden="true"></div>
+      <div class="m-page-head-text">
+        <span class="m-crumbs">
+          <i class="pi pi-compass"></i> Shopfloors / {{ currentShopfloor()?.code }}
+        </span>
+        <h1>
+          {{ currentShopfloor()?.name || '…' }}
+          @if (currentShopfloor()?.isStorage) {
+            <span class="sf-badge storage"><i class="pi pi-box"></i> Storage</span>
+          } @else if (currentShopfloor()?.processName) {
+            <span class="sf-badge process">{{ currentShopfloor()?.processName }}</span>
+          }
+        </h1>
+        <p class="m-page-sub">
+          @if (currentShopfloor()?.isStorage) {
+            Entry point — import sheets here, then send them to the next shopfloor.
+          } @else {
+            Sheets currently in progress here. Select and send to the next shopfloor when done.
+          }
+          @if (!sheets.loading()) {
+            <span class="m-count-chip">
+              <strong>{{ sheets.items().length }}</strong> on this floor
+            </span>
+          }
+        </p>
+      </div>
+      <div class="m-page-actions">
+        @if (currentShopfloor()?.isStorage) {
+          <p-button [label]="'sf.import_excel' | t" icon="pi pi-upload" severity="secondary" [outlined]="true"
+                    (onClick)="openImport()"></p-button>
+          <p-button [label]="'sf.add_sheet' | t" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+        }
+      </div>
+    </header>
+
+    <!-- Selection action bar (sheets) -->
+    @if (selectedSheets().length > 0) {
+      <div class="sel-bar">
+        <span class="sel-count">
+          <i class="pi pi-check-circle"></i>
+          <strong>{{ selectedSheets().length }}</strong> sheet{{ selectedSheets().length === 1 ? '' : 's' }} selected
+        </span>
+        <div class="sel-actions">
+          @if (nextShopfloor(); as nxt) {
+            <p-button [label]="'Send to ' + nxt.name" icon="pi pi-arrow-right" (onClick)="quickSendNext()"></p-button>
+          }
+          <p-button [label]="('sf.move_to' | t) + '…'" icon="pi pi-arrows-h" severity="secondary" [outlined]="true"
+                    (onClick)="openMove()"></p-button>
+          @if (batchMode() === 'Manual') {
+            <p-button [label]="'sf.create_batch' | t" icon="pi pi-objects-column" severity="secondary" [outlined]="true"
+                      (onClick)="openFormBatch()"></p-button>
+          }
+          <p-button [label]="('common.status' | t) + '…'" icon="pi pi-check-square" severity="secondary" [outlined]="true"
+                    (onClick)="openStatus()"></p-button>
+          <p-button [label]="'common.cancel' | t" icon="pi pi-times" severity="secondary" [text]="true"
+                    (onClick)="clearSelection()"></p-button>
+        </div>
+      </div>
+    }
+
+    <!-- Selection action bar (batches) -->
+    @if (selectedBatches().length > 0) {
+      <div class="sel-bar batch-sel">
+        <span class="sel-count">
+          <i class="pi pi-objects-column"></i>
+          <strong>{{ selectedBatches().length }}</strong> batch{{ selectedBatches().length === 1 ? '' : 'es' }} selected
+        </span>
+        <div class="sel-actions">
+          @if (nextShopfloor(); as nxt) {
+            <p-button [label]="'Send batch to ' + nxt.name" icon="pi pi-arrow-right" (onClick)="openBatchMove(nxt.id)"></p-button>
+          }
+          <p-button label="Move batch to…" icon="pi pi-arrows-h" severity="secondary" [outlined]="true"
+                    (onClick)="openBatchMove()"></p-button>
+          <p-button label="Clear" icon="pi pi-times" severity="secondary" [text]="true"
+                    (onClick)="selectedBatches.set([])"></p-button>
+        </div>
+      </div>
+    }
+
+    <!-- Batches panel (only on batch-mode floors) -->
+    @if (isBatchMode()) {
+      <section class="batches-card">
+        <header class="batches-head">
+          <div>
+            <h3>
+              <i class="pi pi-objects-column"></i>
+              Batches on this floor
+              <span class="batches-mode-tag">{{ batchMode() === 'AutoConfirm' ? 'Auto-confirm' : 'Manual' }}</span>
+            </h3>
+            <p class="m-page-sub" style="margin: 0; font-size: 0.82rem;">
+              @if (batchMode() === 'AutoConfirm') {
+                Each move into this floor prompts to group the sheets as a new batch.
+              } @else {
+                Select loose sheets below and click <strong>Form batch</strong> to group them.
+              }
+            </p>
+          </div>
+        </header>
+
+        @if (batches.loading()) {
+          <div style="padding: 1rem;">
+            <p-skeleton width="100%" height="64px"></p-skeleton>
+          </div>
+        } @else if (batches.items().length === 0) {
+          <div class="batches-empty">
+            <i class="pi pi-objects-column"></i>
+            <p>No batches on this floor yet.</p>
+          </div>
+        } @else {
+          <ul class="batch-list">
+            @for (b of batches.items(); track b.id) {
+              <li class="batch-card" [class.selected]="isBatchSelected(b)">
+                <div class="batch-head">
+                  <label class="batch-check">
+                    <p-checkbox [binary]="true"
+                                [ngModel]="isBatchSelected(b)"
+                                (ngModelChange)="toggleBatchSelected(b)"></p-checkbox>
+                  </label>
+                  <div class="batch-id">
+                    <span class="batch-no">{{ b.batchNo }}</span>
+                    <span class="batch-sub">{{ b.sheetCount }} sheet{{ b.sheetCount === 1 ? '' : 's' }} · created {{ b.createdAtUtc | date: 'MMM d, h:mm a' }}</span>
+                  </div>
+                  <p-tag [value]="b.status" class="m-status-tag"
+                         [severity]="statusSeverity(b.status)"></p-tag>
+                  <button type="button" class="batch-expand"
+                          (click)="toggleBatchExpanded(b.id)"
+                          [attr.aria-label]="expandedBatches().has(b.id) ? 'Collapse' : 'Expand'">
+                    <i class="pi" [ngClass]="expandedBatches().has(b.id) ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                  </button>
+                  <button type="button" class="m-icon-btn danger"
+                          (click)="dissolveBatch(b)"
+                          pTooltip="Dissolve batch" tooltipPosition="top">
+                    <i class="pi pi-times-circle"></i>
+                  </button>
+                </div>
+                @if (expandedBatches().has(b.id)) {
+                  <ul class="batch-sheets">
+                    @for (s of b.sheets; track s.id) {
+                      <li>
+                        <span class="m-code">{{ s.sheetNo }}</span>
+                        <span class="m-name" style="flex:1;">{{ s.customerName || '—' }}</span>
+                        <p-tag [value]="s.status" [severity]="statusSeverity(s.status)" class="m-status-tag"></p-tag>
+                      </li>
+                    }
+                  </ul>
+                }
+                @if (b.remarks) {
+                  <div class="batch-remarks">
+                    <i class="pi pi-comment"></i> {{ b.remarks }}
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    <div class="m-panel">
+      <div class="m-panel-head">
+        <p-iconfield iconPosition="left" class="m-search">
+          <p-inputicon class="pi pi-search"></p-inputicon>
+          <input pInputText type="text"
+                 [placeholder]="'sf.search_placeholder' | t"
+                 [value]="search()"
+                 (input)="search.set($any($event.target).value)" />
+          @if (search()) {
+            <button class="m-clear-btn" (click)="clearSearch()" type="button" aria-label="Clear search">
+              <i class="pi pi-times"></i>
+            </button>
+          }
+        </p-iconfield>
+      </div>
+
+      @if (sheets.loading()) {
+        <table class="m-skeleton-table">
+          <thead>
+            <tr>
+              <th style="width:3rem"></th>
+              <th>{{ 'sf.sheet_no' | t }}</th><th>{{ 'sf.order' | t }}</th><th>{{ 'sf.customer' | t }}</th><th>{{ 'sf.type' | t }}</th>
+              <th>{{ 'sf.size' | t }}</th><th>{{ 'sf.qty' | t }}</th><th>{{ 'common.status' | t }}</th><th>{{ 'sf.last_moved' | t }}</th>
+              <th class="m-actions">{{ 'common.actions' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (_ of skeletonRows; track $index) {
+              <tr>
+                <td><p-skeleton width="1.1rem" height="1.1rem" borderRadius="3px"></p-skeleton></td>
+                <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
+                <td><p-skeleton width="5rem" height="1rem"></p-skeleton></td>
+                <td><p-skeleton width="8rem" height="1rem"></p-skeleton></td>
+                <td><p-skeleton width="5rem" height="1rem"></p-skeleton></td>
+                <td><p-skeleton width="5rem" height="1rem"></p-skeleton></td>
+                <td><p-skeleton width="2rem" height="1rem"></p-skeleton></td>
+                <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
+                <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
+                <td class="m-actions"><p-skeleton shape="circle" size="2rem"></p-skeleton></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else if (sheets.items().length === 0) {
+        <div class="m-empty">
+          @if (currentShopfloor()?.isStorage) {
+            <div class="m-empty-icon"><i class="pi pi-inbox"></i></div>
+            <h3>{{ 'sf.storage_empty' | t }}</h3>
+            <p>Import sheets from Excel or add them one at a time. They'll appear here ready to be sent to the first shopfloor.</p>
+            <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
+              <p-button [label]="'sf.import_excel' | t" icon="pi pi-upload" (onClick)="openImport()"></p-button>
+              <p-button [label]="'sf.add_sheet' | t" icon="pi pi-plus" severity="secondary" [outlined]="true" (onClick)="openAdd()"></p-button>
+            </div>
+          } @else {
+            <div class="m-empty-icon muted"><i class="pi pi-arrow-down"></i></div>
+            <h3>{{ 'sf.no_sheets' | t }}</h3>
+            <p>Sheets will appear when they're sent from the previous shopfloor.</p>
+          }
+        </div>
+      } @else if (filteredSheets().length === 0) {
+        <div class="m-empty subtle">
+          <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
+          <h3>No sheets match “{{ search() }}”</h3>
+          <p>Try a different keyword or clear the search.</p>
+          <p-button label="Clear search" icon="pi pi-times" severity="secondary" [outlined]="true" (onClick)="clearSearch()"></p-button>
+        </div>
+      } @else {
+        <p-table
+          [value]="filteredSheets()"
+          [selection]="selectedSheets()"
+          (selectionChange)="onSelectionChange($event)"
+          dataKey="id"
+          class="m-table"
+          [tableStyle]="{ 'min-width': '70rem' }">
+          <ng-template #header>
+            <tr>
+              <th style="width:3rem"><p-tableHeaderCheckbox></p-tableHeaderCheckbox></th>
+              <th>{{ 'sf.sheet_no' | t }}</th><th>{{ 'sf.order' | t }}</th><th>{{ 'sf.customer' | t }}</th><th>{{ 'sf.type' | t }}</th>
+              <th>{{ 'sf.size' | t }}</th><th>{{ 'sf.qty' | t }}</th><th>{{ 'common.status' | t }}</th><th>{{ 'sf.last_moved' | t }}</th>
+              <th class="m-actions">{{ 'common.actions' | t }}</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-sheet>
+            <tr>
+              <td><p-tableCheckbox [value]="sheet"></p-tableCheckbox></td>
+              <td><span class="m-code">{{ sheet.sheetNo }}</span></td>
+              <td class="m-muted">{{ sheet.orderNo || '—' }}</td>
+              <td class="m-name">{{ sheet.customerName || '—' }}</td>
+              <td class="m-muted">{{ sheet.glassType || '—' }}</td>
+              <td class="m-mono">
+                @if (sheet.width || sheet.height) {
+                  {{ sheet.width || '—' }} × {{ sheet.height || '—' }}
+                  @if (sheet.thickness) { <span class="m-muted"> · {{ sheet.thickness }}mm</span> }
+                } @else { — }
+              </td>
+              <td class="m-mono">{{ sheet.quantity }}</td>
+              <td>
+                <p-tag [value]="sheet.status" [severity]="statusSeverity(sheet.status)" class="m-status-tag"></p-tag>
+              </td>
+              <td class="m-muted">{{ sheet.lastMovedAtUtc | date: 'MMM d, h:mm a' }}</td>
+              <td class="m-actions">
+                <button class="m-icon-btn" (click)="openHistory(sheet)" pTooltip="History" tooltipPosition="top" aria-label="History">
+                  <i class="pi pi-history"></i>
+                </button>
+                <button class="m-icon-btn danger" (click)="onDelete(sheet)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+    </div>
+  }
+</section>
+
+<!-- ============== ADD SHEET DIALOG ============== -->
+<p-dialog
+  [visible]="addOpen()" (visibleChange)="addOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!sheets.saving()" [closeOnEscape]="!sheets.saving()"
+  [style]="{ width: '640px' }"
+  header="Add Sheet to Storage"
+  class="m-dialog">
+  <form [formGroup]="addForm" (ngSubmit)="submitAdd()" class="m-form">
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="sheetNo">Sheet No <span class="req">*</span></label>
+        <input pInputText id="sheetNo" formControlName="sheetNo" placeholder="GS-1001" autocomplete="off" />
+        @if (addHasError('sheetNo', 'required')) { <small class="err">Sheet number is required.</small> }
+      </div>
+      <div class="m-field">
+        <label for="orderNo">Order No</label>
+        <input pInputText id="orderNo" formControlName="orderNo" placeholder="SO-1234" autocomplete="off" />
+      </div>
+    </div>
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="customerId">Customer</label>
+        <p-select inputId="customerId" formControlName="customerId" [options]="customerOptions()"
+                  appendTo="body" [filter]="true"></p-select>
+      </div>
+      <div class="m-field">
+        <label for="glassType">Glass type</label>
+        <input pInputText id="glassType" formControlName="glassType" placeholder="Clear / Tinted / Tempered" autocomplete="off" />
+      </div>
+    </div>
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="thickness">Thickness (mm)</label>
+        <p-inputnumber inputId="thickness" formControlName="thickness" mode="decimal" [maxFractionDigits]="2"></p-inputnumber>
+      </div>
+      <div class="m-field">
+        <label for="quantity">Quantity</label>
+        <p-inputnumber inputId="quantity" formControlName="quantity" [min]="1" [showButtons]="true"
+                       buttonLayout="horizontal" spinnerMode="horizontal"></p-inputnumber>
+      </div>
+    </div>
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="width">Width (mm)</label>
+        <p-inputnumber inputId="width" formControlName="width" mode="decimal" [maxFractionDigits]="2"></p-inputnumber>
+      </div>
+      <div class="m-field">
+        <label for="height">Height (mm)</label>
+        <p-inputnumber inputId="height" formControlName="height" mode="decimal" [maxFractionDigits]="2"></p-inputnumber>
+      </div>
+    </div>
+    <div class="m-field">
+      <label for="remarks">Remarks</label>
+      <textarea pTextarea id="remarks" formControlName="remarks" rows="2"></textarea>
+    </div>
+  </form>
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="sheets.saving()" (onClick)="addOpen.set(false)"></p-button>
+    <p-button label="Add to Storage" icon="pi pi-plus"
+              [loading]="sheets.saving()" [disabled]="addForm.invalid"
+              (onClick)="submitAdd()"></p-button>
+  </ng-template>
+</p-dialog>
+
+<!-- ============== MOVE DIALOG ============== -->
+<p-dialog
+  [visible]="moveOpen()" (visibleChange)="moveOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!sheets.saving()" [closeOnEscape]="!sheets.saving()"
+  [style]="{ width: '500px' }"
+  [header]="'Move ' + selectedSheets().length + ' sheet' + (selectedSheets().length === 1 ? '' : 's')"
+  class="m-dialog">
+  <form [formGroup]="moveForm" (ngSubmit)="submitMove()" class="m-form">
+    <div class="m-field">
+      <label for="toShopfloorId">Move to <span class="req">*</span></label>
+      <p-select inputId="toShopfloorId" formControlName="toShopfloorId" [options]="moveTargets()"
+                appendTo="body" [filter]="true" placeholder="Select destination shopfloor"></p-select>
+    </div>
+    <div class="m-field">
+      <label for="moveRemarks">Remarks</label>
+      <textarea pTextarea id="moveRemarks" formControlName="remarks" rows="2"
+                placeholder="Optional notes for this movement"></textarea>
+    </div>
+    @if (moveTargetIsAutoBatch()) {
+      <div class="batch-confirm">
+        <label>
+          <p-checkbox formControlName="createBatch" [binary]="true" inputId="createBatch"></p-checkbox>
+          <span>
+            <strong>Group these sheets as a new batch</strong> on the destination floor.
+            <small>The destination supports batches — all selected sheets will travel together.</small>
+          </span>
+        </label>
+      </div>
+    }
+  </form>
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="sheets.saving()" (onClick)="moveOpen.set(false)"></p-button>
+    <p-button label="Move sheets" icon="pi pi-arrow-right"
+              [loading]="sheets.saving()" [disabled]="moveForm.invalid"
+              (onClick)="submitMove()"></p-button>
+  </ng-template>
+</p-dialog>
+
+<!-- ============== FORM BATCH DIALOG ============== -->
+<p-dialog
+  [visible]="formBatchOpen()" (visibleChange)="formBatchOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!batches.saving()" [closeOnEscape]="!batches.saving()"
+  [style]="{ width: '500px' }"
+  [header]="'Group ' + selectedSheets().length + ' sheet' + (selectedSheets().length === 1 ? '' : 's') + ' as a batch'"
+  class="m-dialog">
+  <form [formGroup]="formBatchForm" (ngSubmit)="submitFormBatch()" class="m-form">
+    <p style="margin: 0 0 0.85rem; font-size: 0.9rem; color: var(--text-soft);">
+      A new batch will be created on <strong>{{ currentShopfloor()?.name }}</strong> containing
+      the {{ selectedSheets().length }} selected sheet{{ selectedSheets().length === 1 ? '' : 's' }}.
+      You can dissolve the batch later from this page.
+    </p>
+    <div class="m-field">
+      <label for="formBatchRemarks">Remarks</label>
+      <textarea pTextarea id="formBatchRemarks" formControlName="remarks" rows="2"
+                placeholder="Optional notes for this batch"></textarea>
+    </div>
+  </form>
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="batches.saving()" (onClick)="formBatchOpen.set(false)"></p-button>
+    <p-button label="Create batch" icon="pi pi-check" [loading]="batches.saving()"
+              (onClick)="submitFormBatch()"></p-button>
+  </ng-template>
+</p-dialog>
+
+<!-- ============== BATCH MOVE DIALOG ============== -->
+<p-dialog
+  [visible]="batchMoveOpen()" (visibleChange)="batchMoveOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!batches.saving()" [closeOnEscape]="!batches.saving()"
+  [style]="{ width: '500px' }"
+  [header]="'Move ' + selectedBatches().length + ' batch' + (selectedBatches().length === 1 ? '' : 'es')"
+  class="m-dialog">
+  <form [formGroup]="batchMoveForm" (ngSubmit)="submitBatchMove()" class="m-form">
+    <div class="m-field">
+      <label for="batchMoveTo">Move to <span class="req">*</span></label>
+      <p-select inputId="batchMoveTo" formControlName="toShopfloorId" [options]="moveTargets()"
+                appendTo="body" [filter]="true" placeholder="Select destination shopfloor"></p-select>
+    </div>
+    <div class="m-field">
+      <label for="batchMoveRemarks">Remarks</label>
+      <textarea pTextarea id="batchMoveRemarks" formControlName="remarks" rows="2"
+                placeholder="Optional notes for this batch movement"></textarea>
+    </div>
+    <p style="margin: 0; font-size: 0.82rem; color: var(--text-muted);">
+      Batches stay grouped if the destination supports batches. Otherwise the batch dissolves
+      and sheets continue individually.
+    </p>
+  </form>
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="batches.saving()" (onClick)="batchMoveOpen.set(false)"></p-button>
+    <p-button label="Move batches" icon="pi pi-arrow-right"
+              [loading]="batches.saving()" [disabled]="batchMoveForm.invalid"
+              (onClick)="submitBatchMove()"></p-button>
+  </ng-template>
+</p-dialog>
+
+<!-- ============== STATUS DIALOG ============== -->
+<p-dialog
+  [visible]="statusOpen()" (visibleChange)="statusOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!sheets.saving()" [closeOnEscape]="!sheets.saving()"
+  [style]="{ width: '500px' }"
+  [header]="'Update status for ' + selectedSheets().length + ' sheet' + (selectedSheets().length === 1 ? '' : 's')"
+  class="m-dialog">
+  <form [formGroup]="statusForm" (ngSubmit)="submitStatus()" class="m-form">
+    <div class="m-field">
+      <label>Choose status <span class="req">*</span></label>
+      <div class="status-grid">
+        @for (opt of statusOptions; track opt.value) {
+          <label class="status-card" [class.selected]="statusForm.value.status === opt.value" [attr.data-tone]="opt.tone">
+            <input type="radio" formControlName="status" [value]="opt.value" />
+            <i [class]="opt.icon"></i>
+            <span>{{ opt.label }}</span>
+          </label>
+        }
+      </div>
+    </div>
+    <div class="m-field">
+      <label for="statusRemarks">Remarks</label>
+      <textarea pTextarea id="statusRemarks" formControlName="remarks" rows="2"
+                placeholder="Optional notes (e.g. reason for hold)"></textarea>
+    </div>
+  </form>
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="sheets.saving()" (onClick)="statusOpen.set(false)"></p-button>
+    <p-button label="Apply status" icon="pi pi-check"
+              [loading]="sheets.saving()" [disabled]="statusForm.invalid"
+              (onClick)="submitStatus()"></p-button>
+  </ng-template>
+</p-dialog>
+
+<!-- ============== HISTORY DRAWER ============== -->
+<p-drawer
+  [visible]="historyOpen()" (visibleChange)="historyOpen.set($event)"
+  position="right"
+  [style]="{ width: '460px' }"
+  styleClass="history-drawer">
+  <ng-template #header>
+    <div class="hist-head">
+      <div>
+        <span class="hist-eyebrow">Sheet history</span>
+        @if (historySheet(); as h) {
+          <h3>{{ h.sheetNo }}</h3>
+          <p class="m-muted" style="margin: 0; font-size: 0.85rem;">
+            {{ h.customerName || 'No customer' }}
+            @if (h.orderNo) { · {{ h.orderNo }} }
+          </p>
+        }
+      </div>
+    </div>
+  </ng-template>
+
+  @if (historyLoading()) {
+    <div class="hist-list">
+      @for (_ of [1,2,3]; track $index) {
+        <div class="hist-skel">
+          <p-skeleton shape="circle" size="2.5rem"></p-skeleton>
+          <div class="hist-skel-lines">
+            <p-skeleton width="9rem" height="0.9rem"></p-skeleton>
+            <p-skeleton width="14rem" height="0.75rem"></p-skeleton>
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (historyMovements().length === 0) {
+    <div class="m-empty subtle" style="padding: 2rem 1rem;">
+      <div class="m-empty-icon muted"><i class="pi pi-clock"></i></div>
+      <h3>No history yet</h3>
+      <p>Movements and status changes will appear here.</p>
+    </div>
+  } @else {
+    <ol class="hist-list">
+      @for (m of historyMovements(); track m.id) {
+        <li class="hist-item">
+          <div class="hist-bullet" [attr.data-kind]="m.fromShopfloorId === null ? 'create' : (m.fromShopfloorId === m.toShopfloorId ? 'status' : 'move')">
+            @if (m.fromShopfloorId === null) {
+              <i class="pi pi-plus"></i>
+            } @else if (m.fromShopfloorId === m.toShopfloorId) {
+              <i class="pi pi-flag"></i>
+            } @else {
+              <i class="pi pi-arrow-right"></i>
+            }
+          </div>
+          <div class="hist-body">
+            <div class="hist-title">
+              @if (m.fromShopfloorId === null) {
+                Sheet created in <strong>{{ m.toShopfloorName }}</strong>
+              } @else if (m.fromShopfloorId === m.toShopfloorId) {
+                Status set to
+                <p-tag [value]="m.status || '—'" [severity]="statusSeverity(m.status)" class="m-status-tag"></p-tag>
+                in <strong>{{ m.toShopfloorName }}</strong>
+              } @else {
+                Moved from <strong>{{ m.fromShopfloorName }}</strong>
+                <i class="pi pi-arrow-right hist-arrow"></i>
+                <strong>{{ m.toShopfloorName }}</strong>
+              }
+            </div>
+            <div class="hist-meta">
+              {{ m.movedAtUtc | date: 'MMM d, y · h:mm a' }}
+              @if (m.movedByEmail) { · {{ m.movedByEmail }} }
+            </div>
+            @if (m.remarks) {
+              <div class="hist-remark"><i class="pi pi-comment"></i> {{ m.remarks }}</div>
+            }
+          </div>
+        </li>
+      }
+    </ol>
+  }
+</p-drawer>
+
+<!-- ============== IMPORT EXCEL DIALOG ============== -->
+<p-dialog
+  [visible]="importOpen()" (visibleChange)="importOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!importing()" [closeOnEscape]="!importing()"
+  [style]="{ width: '780px' }"
+  header="Import sheets from Excel"
+  class="m-dialog">
+
+  <div class="import-body">
+    <div class="import-info">
+      <i class="pi pi-info-circle"></i>
+      <div>
+        <strong>Expected columns:</strong>
+        SheetNo (required), OrderNo, Customer, GlassType, Thickness, Width, Height, Quantity, Remarks.
+        Column names are matched loosely — spacing, underscores and case don't matter.
+        Customer is matched by name against the Customer master.
+      </div>
+    </div>
+
+    <label class="file-picker">
+      <input type="file" accept=".xlsx,.xls,.csv" (change)="onFileSelected($event)" />
+      <span class="file-picker-inner">
+        <i class="pi pi-upload"></i>
+        <span class="file-picker-text">
+          @if (importFileName()) {
+            {{ importFileName() }}
+          } @else {
+            Click to choose an .xlsx, .xls, or .csv file
+          }
+        </span>
+      </span>
+    </label>
+
+    @if (importErrors().length > 0) {
+      <div class="import-errors">
+        <strong>{{ importErrors().length }} row{{ importErrors().length === 1 ? '' : 's' }} skipped:</strong>
+        <ul>
+          @for (e of importErrors(); track e) { <li>{{ e }}</li> }
+        </ul>
+      </div>
+    }
+
+    @if (importParsed().length > 0) {
+      <div class="import-preview">
+        <div class="import-preview-head">
+          <strong>{{ importParsed().length }} row{{ importParsed().length === 1 ? '' : 's' }} ready to import</strong>
+          <span class="m-muted">Preview (first 8 rows)</span>
+        </div>
+        <table class="m-table preview-table">
+          <thead>
+            <tr>
+              <th>Sheet No</th><th>Order</th><th>Customer</th><th>Type</th><th>W×H</th><th>Qty</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of importParsed().slice(0, 8); track $index) {
+              <tr>
+                <td><span class="m-code">{{ r.sheetNo }}</span></td>
+                <td class="m-muted">{{ r.orderNo || '—' }}</td>
+                <td>
+                  {{ r.customerName || '—' }}
+                  @if (r.customerName && !r._customerId) {
+                    <span class="m-muted" style="font-size:0.72rem;">(unmatched)</span>
+                  }
+                </td>
+                <td class="m-muted">{{ r.glassType || '—' }}</td>
+                <td class="m-mono">{{ r.width || '—' }} × {{ r.height || '—' }}</td>
+                <td class="m-mono">{{ r.quantity }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="importing()" (onClick)="importOpen.set(false)"></p-button>
+    <p-button [label]="'Import ' + importParsed().length + ' sheet' + (importParsed().length === 1 ? '' : 's')"
+              icon="pi pi-check"
+              [loading]="importing()" [disabled]="importParsed().length === 0"
+              (onClick)="submitImport()"></p-button>
+  </ng-template>
+</p-dialog>

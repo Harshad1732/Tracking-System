@@ -1,0 +1,78 @@
+<section class="m-page">
+  <header class="m-page-head">
+    <div class="m-page-head-text">
+      <span class="m-crumbs"><i class="pi pi-chart-bar"></i> Reports / Process-wise</span>
+      <h1>Process-wise Report</h1>
+      <p class="m-page-sub">
+        Sheet count grouped by shopfloor — spot bottlenecks at a glance.
+        @if (!shopfloors.loading()) {
+          <span class="m-count-chip">
+            <strong>{{ totalSheets() }}</strong> sheet{{ totalSheets() === 1 ? '' : 's' }} total
+          </span>
+        }
+      </p>
+    </div>
+    <div class="m-page-actions">
+      <p-button label="Export CSV" icon="pi pi-download" severity="secondary" [outlined]="true"
+                [loading]="exporting()" (onClick)="exportCsv()"></p-button>
+      <p-button label="Refresh" icon="pi pi-refresh" severity="secondary" [text]="true"
+                (onClick)="reload()"></p-button>
+    </div>
+  </header>
+
+  <div class="m-panel">
+    @if (shopfloors.loading()) {
+      <div class="proc-list">
+        @for (_ of skeletonRows; track $index) {
+          <div class="proc-row">
+            <div class="proc-info">
+              <p-skeleton width="9rem" height="1rem"></p-skeleton>
+              <p-skeleton width="4rem" height="0.75rem" class="mt-1"></p-skeleton>
+            </div>
+            <p-skeleton width="100%" height="10px" borderRadius="999px"></p-skeleton>
+            <p-skeleton width="3rem" height="1.5rem" borderRadius="999px"></p-skeleton>
+          </div>
+        }
+      </div>
+    } @else if (rows().length === 0) {
+      <div class="m-empty">
+        <div class="m-empty-icon"><i class="pi pi-list"></i></div>
+        <h3>No shopfloors configured</h3>
+        <p>Add shopfloors in the master to see the per-process breakdown.</p>
+        <p-button label="Open Shopfloor Master" icon="pi pi-arrow-right" routerLink="/masters/shopfloors"></p-button>
+      </div>
+    } @else {
+      <div class="proc-list">
+        @for (r of rows(); track r.id) {
+          <a class="proc-row" [routerLink]="['/shopfloors', r.code]" [class.is-storage]="r.isStorage" [class.is-zero]="r.sheetCount === 0">
+            <div class="proc-info">
+              <span class="proc-name">
+                @if (r.isStorage) {
+                  <i class="pi pi-box"></i>
+                } @else {
+                  <i class="pi pi-cog"></i>
+                }
+                {{ r.name }}
+              </span>
+              <span class="proc-sub">
+                {{ r.code }} · seq {{ r.sequenceNo }}
+                @if (r.processName) { · {{ r.processName }} }
+              </span>
+            </div>
+            <div class="proc-bar-wrap">
+              <div class="proc-bar"
+                   [style.width.%]="r.pctOfMax"
+                   [class.is-storage]="r.isStorage"></div>
+              @if (r.sheetCount > 0) {
+                <span class="proc-bar-label">{{ r.pct | number: '1.0-1' }}%</span>
+              }
+            </div>
+            <div class="proc-count" [class.zero]="r.sheetCount === 0">
+              {{ r.sheetCount }}
+            </div>
+          </a>
+        }
+      </div>
+    }
+  </div>
+</section>

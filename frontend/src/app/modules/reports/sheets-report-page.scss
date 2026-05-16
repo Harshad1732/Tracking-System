@@ -1,0 +1,26 @@
+:host { display: block; }
+
+.report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+}
+
+.filter-select {
+  min-width: 200px;
+}
+
+::ng-deep .filter-select.p-select { width: 200px; }
+
+.floor-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+@media (max-width: 700px) {
+  .report-filters { flex-direction: column; align-items: stretch; }
+  ::ng-deep .filter-select.p-select { width: 100%; }
+}

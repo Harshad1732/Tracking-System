@@ -1,0 +1,162 @@
+<section class="m-page">
+  <header class="m-page-head">
+    <div class="m-page-head-text">
+      <span class="m-crumbs"><i class="pi pi-database"></i> Masters / Process Master</span>
+      <h1>Processes</h1>
+      <p class="m-page-sub">
+        Define shopfloor processes (Cutting, Grinding, Tempering …) and their sequence per plant.
+        @if (!store.loading()) {
+          <span class="m-count-chip">
+            <strong>{{ store.items().length }}</strong> total ·
+            <strong>{{ store.activeCount() }}</strong> active
+          </span>
+        }
+      </p>
+    </div>
+    <div class="m-page-actions">
+      <p-button label="Add Process" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+    </div>
+  </header>
+
+  <div class="m-panel">
+    <div class="m-panel-head">
+      <p-iconfield iconPosition="left" class="m-search">
+        <p-inputicon class="pi pi-search"></p-inputicon>
+        <input pInputText type="text"
+               placeholder="Search by code, process name, plant..."
+               [value]="search()"
+               (input)="search.set($any($event.target).value)" />
+        @if (search()) {
+          <button class="m-clear-btn" (click)="clearSearch()" type="button" aria-label="Clear search">
+            <i class="pi pi-times"></i>
+          </button>
+        }
+      </p-iconfield>
+    </div>
+
+    @if (store.loading()) {
+      <table class="m-skeleton-table">
+        <thead>
+          <tr>
+            <th>Seq</th><th>Code</th><th>Process Name</th><th>Plant</th>
+            <th>Status</th><th>Created</th><th class="m-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (_ of skeletonRows; track $index) {
+            <tr>
+              <td><p-skeleton width="2rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="4rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="9rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="8rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
+              <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
+              <td class="m-actions">
+                <p-skeleton shape="circle" size="2rem"></p-skeleton>
+                <p-skeleton shape="circle" size="2rem"></p-skeleton>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (filtered().length === 0 && store.items().length === 0) {
+      <div class="m-empty">
+        <div class="m-empty-icon"><i class="pi pi-sitemap"></i></div>
+        <h3>No processes yet</h3>
+        <p>Add the floors / processes your sheets move through, in sequence.</p>
+        <p-button label="Add first process" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+      </div>
+    } @else if (filtered().length === 0) {
+      <div class="m-empty subtle">
+        <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
+        <h3>No processes match “{{ search() }}”</h3>
+        <p>Try a different keyword or clear the search.</p>
+        <p-button label="Clear search" icon="pi pi-times" severity="secondary" [outlined]="true" (onClick)="clearSearch()"></p-button>
+      </div>
+    } @else {
+      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '52rem' }">
+        <ng-template #header>
+          <tr>
+            <th>Seq</th><th>Code</th><th>Process Name</th><th>Plant</th>
+            <th>Status</th><th>Created</th><th class="m-actions">Actions</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-p>
+          <tr>
+            <td class="m-mono">{{ p.sequenceNo }}</td>
+            <td><span class="m-code">{{ p.code }}</span></td>
+            <td class="m-name">{{ p.name }}</td>
+            <td class="m-muted">{{ p.plantName }}</td>
+            <td>
+              <p-tag [value]="p.isActive ? 'Active' : 'Inactive'"
+                     [severity]="p.isActive ? 'success' : 'secondary'"
+                     class="m-status-tag"></p-tag>
+            </td>
+            <td class="m-muted">{{ p.createdAtUtc | date: 'MMM d, y' }}</td>
+            <td class="m-actions">
+              <button class="m-icon-btn" (click)="openEdit(p)" pTooltip="Edit" tooltipPosition="top" aria-label="Edit">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="m-icon-btn danger" (click)="onDelete(p)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
+                <i class="pi pi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</section>
+
+<p-dialog
+  [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
+  [style]="{ width: '540px' }"
+  [header]="editing() ? 'Edit Process' : 'Add Process'"
+  class="m-dialog">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="m-form">
+    <div class="m-field">
+      <label for="plantId">Plant <span class="req">*</span></label>
+      <p-select inputId="plantId" formControlName="plantId" [options]="plantOptions()"
+                placeholder="Select plant" appendTo="body" [filter]="true"></p-select>
+      @if (hasError('plantId', 'required')) { <small class="err">Plant is required.</small> }
+    </div>
+
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="code">Code <span class="req">*</span></label>
+        <input pInputText id="code" formControlName="code" placeholder="CUT" autocomplete="off" />
+        @if (hasError('code', 'required')) { <small class="err">Code is required.</small> }
+      </div>
+      <div class="m-field">
+        <label for="name">Process name <span class="req">*</span></label>
+        <input pInputText id="name" formControlName="name" placeholder="Cutting" autocomplete="off" />
+        @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
+      </div>
+    </div>
+
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="sequenceNo">Sequence</label>
+        <p-inputnumber inputId="sequenceNo" formControlName="sequenceNo" [min]="0" [showButtons]="true"
+                       buttonLayout="horizontal" spinnerMode="horizontal" [step]="10"></p-inputnumber>
+      </div>
+      <div class="m-field">
+        <label>Status</label>
+        <div class="m-switch-row">
+          <p-toggleswitch formControlName="isActive" inputId="isActive"></p-toggleswitch>
+          <span class="m-switch-label">{{ form.value.isActive ? 'Active' : 'Inactive' }}</span>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="store.saving()" (onClick)="closeDialog()"></p-button>
+    <p-button [label]="editing() ? 'Save changes' : 'Add Process'"
+              [icon]="editing() ? 'pi pi-check' : 'pi pi-plus'"
+              [loading]="store.saving()" [disabled]="form.invalid"
+              (onClick)="submit()"></p-button>
+  </ng-template>
+</p-dialog>

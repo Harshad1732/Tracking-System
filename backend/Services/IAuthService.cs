@@ -53,12 +53,20 @@ public class AuthService : IAuthService
     public async Task<(AuthResponse? Result, string? Error)> RegisterAsync(RegisterRequest req, CancellationToken ct)
     {
         var email = req.Email.Trim().ToLowerInvariant();
-        var slug = Slugify(req.TenantName);
-        if (string.IsNullOrWhiteSpace(slug))
+        var baseSlug = Slugify(req.TenantName);
+        if (string.IsNullOrWhiteSpace(baseSlug))
             return (null, "Invalid workspace name.");
 
-        if (await _db.Tenants.AnyAsync(t => t.Slug == slug, ct))
-            return (null, "Workspace slug already exists. Pick a different workspace name.");
+        // Slug collisions are auto-resolved by appending -2, -3, etc. so public sign-up
+        // never fails because someone else picked a similar name.
+        var slug = baseSlug;
+        var suffix = 1;
+        while (await _db.Tenants.AnyAsync(t => t.Slug == slug, ct))
+        {
+            suffix++;
+            slug = $"{baseSlug}-{suffix}";
+            if (suffix > 100) return (null, "Could not generate a unique workspace URL.");
+        }
 
         var tenant = new Tenant { Name = req.TenantName.Trim(), Slug = slug };
         _db.Tenants.Add(tenant);
@@ -66,12 +74,28 @@ public class AuthService : IAuthService
         var user = new User
         {
             TenantId = tenant.Id,
+            Number = 1,  // first user in a brand new tenant
             Email = email,
             FullName = req.FullName,
             PasswordHash = _hasher.Hash(req.Password),
             Role = "Admin"
         };
         _db.Users.Add(user);
+
+        // Every new tenant gets a 14-day Free trial. They can upgrade from the billing page.
+        var freePlan = await _db.Plans.FirstOrDefaultAsync(p => p.Code == "free" && p.IsActive, ct);
+        if (freePlan is not null)
+        {
+            _db.Subscriptions.Add(new Subscription
+            {
+                TenantId = tenant.Id,
+                PlanId = freePlan.Id,
+                Status = "Trial",
+                TrialEndsAtUtc = DateTime.UtcNow.AddDays(14),
+                CurrentPeriodEndsAtUtc = DateTime.UtcNow.AddDays(14)
+            });
+        }
+
         await _db.SaveChangesAsync(ct);
         return (await IssueTokensAsync(user, tenant, ct), null);
     }

@@ -1,0 +1,288 @@
+<section class="m-page">
+  <header class="m-page-head">
+    <div class="m-page-head-text">
+      <span class="m-crumbs"><i class="pi pi-cog"></i> Administration</span>
+      <h1>Administration</h1>
+      <p class="m-page-sub">Manage users, roles and your workspace settings.</p>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="adm-tabs" role="tablist">
+    <button type="button" class="adm-tab" [class.active]="tab() === 'users'"
+            (click)="setTab('users')" role="tab" [attr.aria-selected]="tab() === 'users'">
+      <i class="pi pi-users"></i> Users
+      <span class="adm-tab-badge">{{ store.users().length }}</span>
+    </button>
+    <button type="button" class="adm-tab" [class.active]="tab() === 'workspace'"
+            (click)="setTab('workspace')" role="tab" [attr.aria-selected]="tab() === 'workspace'">
+      <i class="pi pi-building"></i> Workspace
+    </button>
+  </nav>
+
+  <!-- ========= USERS TAB ========= -->
+  @if (tab() === 'users') {
+    <div class="m-panel">
+      <div class="m-panel-head adm-panel-head">
+        <p-iconfield iconPosition="left" class="m-search">
+          <p-inputicon class="pi pi-search"></p-inputicon>
+          <input pInputText type="text"
+                 placeholder="Search by email, name or role…"
+                 [value]="search()"
+                 (input)="search.set($any($event.target).value)" />
+        </p-iconfield>
+        <p-button label="Invite user" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+      </div>
+
+      @if (store.usersLoading()) {
+        <table class="m-skeleton-table">
+          <thead>
+            <tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th>Created</th><th class="m-actions">Actions</th></tr>
+          </thead>
+          <tbody>
+            @for (_ of skeletonRows; track $index) {
+              <tr>
+                <td><p-skeleton width="12rem" height="1rem"></p-skeleton></td>
+                <td><p-skeleton width="9rem" height="1rem"></p-skeleton></td>
+                <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
+                <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
+                <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
+                <td class="m-actions">
+                  <p-skeleton shape="circle" size="2rem"></p-skeleton>
+                  <p-skeleton shape="circle" size="2rem"></p-skeleton>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else if (filteredUsers().length === 0) {
+        <div class="m-empty">
+          <div class="m-empty-icon"><i class="pi pi-users"></i></div>
+          <h3>{{ search() ? 'No matching users' : 'Just you so far' }}</h3>
+          <p>{{ search() ? 'Try a different keyword.' : 'Invite teammates to collaborate on the shopfloor.' }}</p>
+          @if (!search()) {
+            <p-button label="Invite first user" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+          }
+        </div>
+      } @else {
+        <p-table [value]="filteredUsers()" class="m-table" [tableStyle]="{ 'min-width': '60rem' }">
+          <ng-template #header>
+            <tr>
+              <th>Email</th>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Sign-in</th>
+              <th>Created</th>
+              <th class="m-actions">Actions</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-u>
+            <tr>
+              <td class="m-name">
+                {{ u.email }}
+                @if (isSelf(u)) { <span class="adm-you">You</span> }
+              </td>
+              <td class="m-muted">{{ u.fullName || '—' }}</td>
+              <td>
+                <p-tag [value]="u.role" [severity]="roleSeverity(u.role)" class="m-status-tag"></p-tag>
+              </td>
+              <td>
+                @if (u.isActive) {
+                  <p-tag value="Active" severity="success" class="m-status-tag"></p-tag>
+                } @else {
+                  <p-tag value="Inactive" severity="secondary" class="m-status-tag"></p-tag>
+                }
+              </td>
+              <td class="m-muted">
+                @if (u.provider) {
+                  <i class="pi" [class.pi-google]="u.provider === 'google'" [class.pi-microsoft]="u.provider === 'microsoft'"></i>
+                  {{ u.provider }}
+                } @else if (u.hasPassword) {
+                  Email + password
+                } @else {
+                  No credentials
+                }
+              </td>
+              <td class="m-muted">{{ u.createdAtUtc | date: 'MMM d, y' }}</td>
+              <td class="m-actions">
+                <button class="m-icon-btn" (click)="openEdit(u)" pTooltip="Edit" tooltipPosition="top">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button class="m-icon-btn" (click)="openReset(u)" pTooltip="Reset password" tooltipPosition="top">
+                  <i class="pi pi-key"></i>
+                </button>
+                <button class="m-icon-btn danger" (click)="delete(u)" pTooltip="Delete" tooltipPosition="top"
+                        [disabled]="isSelf(u)">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+    </div>
+  }
+
+  <!-- ========= WORKSPACE TAB ========= -->
+  @if (tab() === 'workspace') {
+    <div class="adm-ws-grid">
+      <article class="m-panel adm-ws-card">
+        <header class="adm-ws-head">
+          <h3>Workspace details</h3>
+          <p>Visible name shown across the app. Workspace URL is fixed after sign-up.</p>
+        </header>
+        @if (store.workspaceLoading()) {
+          <div style="padding: 1.25rem;">
+            <p-skeleton width="100%" height="3rem"></p-skeleton>
+          </div>
+        } @else if (store.workspace(); as ws) {
+          <form [formGroup]="workspaceForm" (ngSubmit)="saveWorkspace()" class="m-form" style="padding: 1.25rem;">
+            <div class="m-field">
+              <label for="wsName">Workspace name <span class="req">*</span></label>
+              <input pInputText id="wsName" formControlName="name" placeholder="ACME Glass Co." autocomplete="off" />
+              @if (hasError(workspaceForm, 'name', 'required')) { <small class="err">Name is required.</small> }
+            </div>
+            <div class="m-field">
+              <label>Workspace URL</label>
+              <div class="adm-slug">
+                <span class="adm-slug-prefix">tracker.app/</span>
+                <span class="adm-slug-val">{{ ws.slug }}</span>
+                <span class="adm-slug-hint">Set at sign-up · not editable</span>
+              </div>
+            </div>
+            <div class="m-field">
+              <label>Created</label>
+              <span class="adm-ws-meta">{{ ws.createdAtUtc | date: 'EEEE, MMMM d, y' }}</span>
+            </div>
+            <div style="display: flex; justify-content: flex-end;">
+              <p-button label="Save workspace name" icon="pi pi-check"
+                        [loading]="store.saving()" [disabled]="workspaceForm.invalid"
+                        (onClick)="saveWorkspace()"></p-button>
+            </div>
+          </form>
+        }
+      </article>
+
+      <article class="m-panel adm-ws-stats">
+        <header class="adm-ws-head">
+          <h3>At a glance</h3>
+          <p>Resources configured under this workspace.</p>
+        </header>
+        @if (store.workspaceLoading()) {
+          <div style="padding: 1.25rem;">
+            <p-skeleton width="100%" height="6rem"></p-skeleton>
+          </div>
+        } @else if (store.workspace(); as ws) {
+          <ul class="adm-stat-list">
+            <li>
+              <div class="adm-stat-icon"><i class="pi pi-users"></i></div>
+              <div class="adm-stat-body">
+                <span class="adm-stat-num">{{ ws.userCount }}</span>
+                <span class="adm-stat-label">users</span>
+              </div>
+            </li>
+            <li>
+              <div class="adm-stat-icon"><i class="pi pi-building"></i></div>
+              <div class="adm-stat-body">
+                <span class="adm-stat-num">{{ ws.plantCount }}</span>
+                <span class="adm-stat-label">plants</span>
+              </div>
+            </li>
+            <li>
+              <div class="adm-stat-icon"><i class="pi pi-compass"></i></div>
+              <div class="adm-stat-body">
+                <span class="adm-stat-num">{{ ws.shopfloorCount }}</span>
+                <span class="adm-stat-label">shopfloors</span>
+              </div>
+            </li>
+          </ul>
+        }
+      </article>
+    </div>
+  }
+</section>
+
+<!-- ============ USER ADD/EDIT DIALOG ============ -->
+<p-dialog
+  [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
+  [style]="{ width: '520px' }"
+  [header]="editing() ? 'Edit user' : 'Invite user'"
+  class="m-dialog">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="m-form">
+    <div class="m-field">
+      <label for="email">Email <span class="req">*</span></label>
+      <input pInputText id="email" formControlName="email" placeholder="operator@example.com" autocomplete="off" />
+      @if (hasError(form, 'email', 'required')) { <small class="err">Email is required.</small> }
+      @if (hasError(form, 'email', 'email')) { <small class="err">Enter a valid email.</small> }
+    </div>
+    <div class="m-field">
+      <label for="fullName">Full name</label>
+      <input pInputText id="fullName" formControlName="fullName" placeholder="Suresh Kumar" autocomplete="off" />
+    </div>
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="role">Role <span class="req">*</span></label>
+        <p-select inputId="role" formControlName="role" [options]="roleOptions" appendTo="body"></p-select>
+      </div>
+      @if (editing()) {
+        <div class="m-field">
+          <label>Active</label>
+          <div class="m-switch-row">
+            <p-toggleswitch formControlName="isActive" inputId="isActive"></p-toggleswitch>
+            <span class="m-switch-label">{{ form.value.isActive ? 'Can sign in' : 'Blocked' }}</span>
+          </div>
+        </div>
+      }
+    </div>
+    @if (!editing()) {
+      <div class="m-field">
+        <label for="password">Temporary password <span class="req">*</span></label>
+        <p-password id="password" formControlName="password" [feedback]="true" [toggleMask]="true" inputStyleClass="adm-pw"></p-password>
+        @if (hasError(form, 'password', 'required')) { <small class="err">Password is required.</small> }
+        @if (hasError(form, 'password', 'minlength')) { <small class="err">Minimum 8 characters.</small> }
+        <small style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Share this with the user — they should change it after their first sign-in.
+        </small>
+      </div>
+    }
+  </form>
+
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="store.saving()" (onClick)="dialogOpen.set(false)"></p-button>
+    <p-button [label]="editing() ? 'Save changes' : 'Invite user'"
+              [icon]="editing() ? 'pi pi-check' : 'pi pi-send'"
+              [loading]="store.saving()" [disabled]="form.invalid"
+              (onClick)="submit()"></p-button>
+  </ng-template>
+</p-dialog>
+
+<!-- ============ RESET PASSWORD DIALOG ============ -->
+<p-dialog
+  [visible]="resetOpen()" (visibleChange)="resetOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
+  [style]="{ width: '460px' }"
+  header="Reset password"
+  class="m-dialog">
+  <form [formGroup]="resetForm" (ngSubmit)="submitReset()" class="m-form">
+    <p style="margin: 0 0 1rem; font-size: 0.9rem; color: var(--text-soft);">
+      Set a new temporary password for <strong>{{ resetTarget()?.email }}</strong>.
+      Their current sessions will be ended; they'll need to sign in again.
+    </p>
+    <div class="m-field">
+      <label for="newPassword">New password <span class="req">*</span></label>
+      <p-password id="newPassword" formControlName="newPassword" [feedback]="true" [toggleMask]="true"></p-password>
+      @if (hasError(resetForm, 'newPassword', 'required')) { <small class="err">Password is required.</small> }
+      @if (hasError(resetForm, 'newPassword', 'minlength')) { <small class="err">Minimum 8 characters.</small> }
+    </div>
+  </form>
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="store.saving()" (onClick)="resetOpen.set(false)"></p-button>
+    <p-button label="Reset password" icon="pi pi-key"
+              [loading]="store.saving()" [disabled]="resetForm.invalid"
+              (onClick)="submitReset()"></p-button>
+  </ng-template>
+</p-dialog>

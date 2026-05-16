@@ -1,0 +1,177 @@
+<!-- Screen-only action bar -->
+<div class="screen-actions no-print">
+  <div class="screen-crumbs">
+    <i class="pi pi-chart-bar"></i>
+    Reports / {{ title() }}
+  </div>
+  <div class="screen-buttons">
+    <p-button label="Refresh" icon="pi pi-refresh" severity="secondary" [text]="true"
+              (onClick)="reload()"></p-button>
+    <p-button label="Export CSV" icon="pi pi-download" severity="secondary" [outlined]="true"
+              [loading]="exporting()" (onClick)="exportCsv()"></p-button>
+    <p-button label="Print" icon="pi pi-print" (onClick)="print()"></p-button>
+  </div>
+</div>
+
+<!-- The printable document -->
+<article class="doc" [class.is-loading]="loading()">
+
+  <!-- ===== Header ===== -->
+  <header class="doc-head">
+    <div class="doc-brand">
+      <div class="doc-mark">T</div>
+      <div class="doc-brand-text">
+        <div class="doc-tenant">{{ auth.tenant()?.name || 'Tracker' }}</div>
+        <div class="doc-subline">Glass-Sheet Shopfloor Tracking System</div>
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div class="doc-title">{{ title() }}</div>
+      <div class="doc-stamp">
+        <span class="doc-stamp-label">Generated</span>
+        <span class="doc-stamp-value">{{ now() | date: 'EEEE, MMMM d, y · h:mm a' }}</span>
+      </div>
+      <div class="doc-stamp">
+        <span class="doc-stamp-label">Prepared by</span>
+        <span class="doc-stamp-value">{{ auth.user()?.fullName || auth.user()?.email }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Summary ===== -->
+  <section class="doc-summary">
+    <div class="sum-card">
+      <span class="sum-label">{{ summaryLabel() }}</span>
+      @if (loading()) {
+        <p-skeleton width="3rem" height="1.6rem"></p-skeleton>
+      } @else {
+        <span class="sum-value">{{ totalSheets() }}</span>
+      }
+      <span class="sum-hint">{{ summaryHint() }}</span>
+    </div>
+    <div class="sum-card">
+      <span class="sum-label">Active shopfloors</span>
+      @if (loading()) {
+        <p-skeleton width="3rem" height="1.6rem"></p-skeleton>
+      } @else {
+        <span class="sum-value">{{ activeFloors().length }}</span>
+      }
+      <span class="sum-hint">Including storage</span>
+    </div>
+    <div class="sum-card sum-card-wide">
+      <span class="sum-label">By floor</span>
+      <div class="sum-breakdown">
+        @if (loading()) {
+          @for (_ of skeletonRows; track $index) {
+            <p-skeleton width="6rem" height="0.9rem"></p-skeleton>
+          }
+        } @else {
+          @for (g of groups(); track g.floor.id) {
+            <span class="sum-pip" [class.is-storage]="g.floor.isStorage">
+              <strong>{{ g.sheets.length }}</strong>
+              {{ g.floor.name }}
+            </span>
+          }
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Detail per shopfloor ===== -->
+  <section class="doc-body">
+    @if (loading()) {
+      @for (_ of skeletonRows; track $index) {
+        <div class="floor-block">
+          <div class="floor-head">
+            <p-skeleton width="14rem" height="1.2rem"></p-skeleton>
+          </div>
+          <div style="padding: 1rem;">
+            <p-skeleton width="100%" height="6rem"></p-skeleton>
+          </div>
+        </div>
+      }
+    } @else if (groups().length === 0) {
+      <div class="doc-empty">
+        <i class="pi pi-inbox"></i>
+        <h3>No shopfloors configured</h3>
+        <p>Add active shopfloors in the master to populate this report.</p>
+      </div>
+    } @else {
+      @for (g of groups(); track g.floor.id; let i = $index) {
+        <section class="floor-block" [class.is-storage]="g.floor.isStorage">
+          <header class="floor-head">
+            <div class="floor-head-left">
+              <span class="floor-seq">{{ i + 1 }}</span>
+              <div class="floor-title">
+                <span class="floor-name">{{ g.floor.name }}</span>
+                <span class="floor-sub">
+                  {{ g.floor.code }}
+                  @if (g.floor.processName) { · {{ g.floor.processName }} }
+                  @if (g.floor.isStorage) { · Entry / Storage }
+                </span>
+              </div>
+            </div>
+            <div class="floor-head-right">
+              <span class="floor-count">
+                {{ g.sheets.length }}
+                <span class="floor-count-label">sheet{{ g.sheets.length === 1 ? '' : 's' }}</span>
+              </span>
+            </div>
+          </header>
+
+          @if (g.sheets.length === 0) {
+            <div class="floor-empty">— No sheets on this floor —</div>
+          } @else {
+            <table class="floor-table">
+              <thead>
+                <tr>
+                  <th class="col-no">#</th>
+                  <th class="col-cr">CR No</th>
+                  <th>Customer</th>
+                  <th>Order</th>
+                  <th>Glass type</th>
+                  <th>Size (W × H)</th>
+                  <th class="col-num">Th.</th>
+                  <th class="col-num">Qty</th>
+                  <th>Status</th>
+                  <th class="col-num">Days</th>
+                  <th>Last moved</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (sheet of g.sheets; track sheet.id; let row = $index) {
+                  <tr>
+                    <td class="col-no">{{ row + 1 }}</td>
+                    <td class="col-cr"><strong>{{ sheet.sheetNo }}</strong></td>
+                    <td>{{ sheet.customerName || '—' }}</td>
+                    <td>{{ sheet.orderNo || '—' }}</td>
+                    <td>{{ sheet.glassType || '—' }}</td>
+                    <td>
+                      @if (sheet.width || sheet.height) {
+                        {{ sheet.width || '—' }} × {{ sheet.height || '—' }}
+                      } @else { — }
+                    </td>
+                    <td class="col-num">{{ sheet.thickness || '—' }}</td>
+                    <td class="col-num">{{ sheet.quantity }}</td>
+                    <td>
+                      <span class="status-pill" [attr.data-status]="sheet.status">{{ sheet.status }}</span>
+                    </td>
+                    <td class="col-num">{{ daysSince(sheet.entryAtUtc) }}</td>
+                    <td>{{ sheet.lastMovedAtUtc | date: 'MMM d, h:mm a' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </section>
+      }
+    }
+  </section>
+
+  <!-- ===== Footer ===== -->
+  <footer class="doc-foot">
+    <span>{{ auth.tenant()?.name || 'Tracker' }} · {{ title() }}</span>
+    <span>{{ now() | date: 'yyyy-MM-dd HH:mm' }}</span>
+    <span class="doc-foot-page">Page <span class="page-no"></span></span>
+  </footer>
+</article>

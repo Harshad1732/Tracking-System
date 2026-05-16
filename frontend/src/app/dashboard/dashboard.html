@@ -1,43 +1,159 @@
-<p-toolbar class="nav">
-  <ng-template #start>
-    <div class="brand">
-      <p-avatar label="T" shape="circle" class="brand-mark"></p-avatar>
-      <span class="brand-name">Tracker</span>
-      @if (auth.tenant(); as t) {
-        <span class="tenant-pill">{{ t.name }} <small>· {{ t.slug }}</small></span>
+<section class="dash">
+
+  <!-- ===== Welcome card ===== -->
+  <header class="welcome">
+    <div class="welcome-left">
+      <div class="welcome-avatar">{{ initials() }}</div>
+      <div class="welcome-text">
+        <span class="welcome-eyebrow">Welcome back</span>
+        <h1>{{ firstName() }}</h1>
+        <div class="welcome-meta">
+          <p-tag [value]="auth.role() || 'User'" severity="info" class="welcome-role"></p-tag>
+          @if (auth.tenant(); as t) {
+            <span class="welcome-tenant"><i class="pi pi-building"></i> {{ t.name }}</span>
+          }
+          <span class="welcome-date"><i class="pi pi-calendar"></i> {{ today | date: 'EEEE, MMMM d' }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="welcome-right">
+      <p-button label="Refresh" icon="pi pi-refresh" severity="secondary" [text]="true" (onClick)="refresh()"></p-button>
+    </div>
+  </header>
+
+  <!-- ===== KPI strip ===== -->
+  <div class="kpi-row">
+    @for (kpi of kpis(); track kpi.key) {
+      <article class="kpi" [attr.data-tone]="kpi.tone">
+        <div class="kpi-icon"><i [class]="kpi.icon"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-label">{{ kpi.label }}</span>
+          @if (loading()) {
+            <p-skeleton width="3.5rem" height="1.9rem"></p-skeleton>
+          } @else {
+            <span class="kpi-value">{{ kpi.value }}</span>
+          }
+          <span class="kpi-hint">{{ kpi.hint }}</span>
+        </div>
+      </article>
+    }
+  </div>
+
+  <!-- ===== Workspace CTA ===== -->
+  <a class="cta" routerLink="/shopfloors">
+    <div class="cta-icon"><i class="pi pi-compass"></i></div>
+    <div class="cta-body">
+      <span class="cta-eyebrow">Shopfloor section</span>
+      <h2>Open Shopfloor Workspace</h2>
+      <p class="cta-sub">
+        @if (loading()) {
+          Loading floor data…
+        } @else {
+          <strong>{{ activeFloors().length }}</strong> floor{{ activeFloors().length === 1 ? '' : 's' }} active ·
+          <strong>{{ liveSheets() }}</strong> sheet{{ liveSheets() === 1 ? '' : 's' }} live
+        }
+      </p>
+      @if (!loading() && activeFloors().length > 0) {
+        <div class="cta-chips">
+          @for (f of activeFloors(); track f.id) {
+            <span class="cta-chip"
+                  [class.is-storage]="f.isStorage"
+                  [style.--floor-base]="f.tone.base">
+              <span class="cta-chip-dot"></span>
+              {{ f.name }} · <strong>{{ f.count }}</strong>
+            </span>
+          }
+        </div>
       }
     </div>
-  </ng-template>
-  <ng-template #end>
-    <div class="user">
-      <p-avatar [label]="initials()" shape="circle"></p-avatar>
-      <div class="user-meta">
-        <strong>{{ auth.user()?.fullName || auth.user()?.email }}</strong>
-        <p-tag [value]="auth.user()?.role || ''" severity="info"></p-tag>
-      </div>
-      <p-button label="Logout" icon="pi pi-sign-out" severity="secondary"
-                [text]="true" (onClick)="logout()"></p-button>
+    <div class="cta-action">
+      <span class="cta-btn">
+        Open Workspace
+        <i class="pi pi-arrow-right"></i>
+      </span>
     </div>
-  </ng-template>
-</p-toolbar>
+  </a>
 
-<section class="content">
-  <h1>Welcome, {{ auth.user()?.fullName || auth.user()?.email }}!</h1>
-  <p class="muted">You're signed in to Tracker. This is a placeholder dashboard &mdash; the
-    real shopfloor screens will plug in here.</p>
+  <!-- ===== Donut + Alerts ===== -->
+  <div class="dash-grid">
+    <!-- Status donut -->
+    <section class="card donut-card">
+      <header class="card-head">
+        <div>
+          <h3>Status distribution</h3>
+          <p>Where each sheet currently stands.</p>
+        </div>
+      </header>
 
-  <div class="grid">
-    <p-card>
-      <ng-template #title>Lines Active</ng-template>
-      <ng-template #content><div class="big">3 / 4</div></ng-template>
-    </p-card>
-    <p-card>
-      <ng-template #title>Plant OEE (today)</ng-template>
-      <ng-template #content><div class="big">81%</div></ng-template>
-    </p-card>
-    <p-card>
-      <ng-template #title>Open Work Orders</ng-template>
-      <ng-template #content><div class="big">12</div></ng-template>
-    </p-card>
+      @if (loading()) {
+        <div class="donut-skel"><p-skeleton shape="circle" size="160px"></p-skeleton></div>
+      } @else if (donutTotal() === 0) {
+        <div class="donut-empty">
+          <i class="pi pi-chart-pie"></i>
+          <p>No data yet</p>
+        </div>
+      } @else {
+        <div class="donut-wrap">
+          <svg viewBox="0 0 200 200" class="donut" role="img" aria-label="Status distribution">
+            <circle cx="100" cy="100" [attr.r]="ringRadius" class="donut-bg" fill="none" stroke-width="24"></circle>
+            <g transform="rotate(-90 100 100)">
+              @for (s of donutSlices(); track s.key) {
+                <circle cx="100" cy="100" [attr.r]="ringRadius"
+                        fill="none" stroke-width="24"
+                        [attr.stroke-dasharray]="s.dasharray"
+                        [attr.stroke-dashoffset]="s.dashoffset"
+                        class="donut-slice"
+                        [attr.data-tone]="s.tone"></circle>
+              }
+            </g>
+            <text x="100" y="92" class="donut-center-num">{{ donutTotal() }}</text>
+            <text x="100" y="116" class="donut-center-lbl">total</text>
+          </svg>
+        </div>
+        <ul class="donut-legend">
+          @for (s of donutSlices(); track s.key) {
+            <li>
+              <span class="legend-dot" [attr.data-tone]="s.tone"></span>
+              <span class="legend-label">{{ s.label }}</span>
+              <span class="legend-value">{{ s.value }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <!-- Alerts -->
+    <section class="card alerts-card">
+      <header class="card-head">
+        <div>
+          <h3>Today at a glance</h3>
+          <p>Things worth your attention right now.</p>
+        </div>
+      </header>
+
+      @if (loading()) {
+        <ul class="alerts-list">
+          @for (_ of [1,2,3,4]; track $index) {
+            <li class="alert-skel">
+              <p-skeleton shape="circle" size="36px"></p-skeleton>
+              <p-skeleton width="60%" height="0.9rem"></p-skeleton>
+              <p-skeleton width="2rem" height="1.2rem"></p-skeleton>
+            </li>
+          }
+        </ul>
+      } @else {
+        <ul class="alerts-list">
+          @for (a of alerts(); track a.key) {
+            <li>
+              <a class="alert-row" [routerLink]="a.link" [attr.data-tone]="a.tone" [class.is-zero]="a.count === 0">
+                <span class="alert-icon"><i [class]="a.icon"></i></span>
+                <span class="alert-label">{{ a.label }}</span>
+                <span class="alert-count">{{ a.count }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
   </div>
 </section>

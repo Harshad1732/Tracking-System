@@ -26,54 +26,103 @@ import { RippleModule } from 'primeng/ripple';
 export class Landing {
   protected readonly features = [
     {
-      icon: 'pi pi-chart-line',
-      title: 'Real-Time Production Monitoring',
-      text: 'Live visibility into every line, station and machine on the shopfloor so supervisors can react in seconds, not shifts.'
+      icon: 'pi pi-upload',
+      title: 'Import sheets from Excel (or SAP)',
+      text: 'Drop an .xlsx into Storage to register hundreds of sheets at once — Sheet No, Customer, Glass Type, dimensions, quantity. Duplicates are detected and reported. The same bulk endpoint lets SAP push orders later, no code change.'
     },
     {
-      icon: 'pi pi-box',
-      title: 'Work Order Tracking',
-      text: 'Track each work order from release to completion with operator, machine and quantity logs at every step.'
+      icon: 'pi pi-compass',
+      title: 'Configurable shopfloor pipeline',
+      text: 'Define Storage + as many production floors as you need (Cutting, Edging, Tempering, Lamination, Marking, Blackborder, Packing…). Each floor gets its own colour, sequence, and screen.'
     },
     {
-      icon: 'pi pi-clock',
-      title: 'Downtime & OEE Analysis',
-      text: 'Capture downtime reasons and compute Availability, Performance and Quality to drive continuous improvement.'
+      icon: 'pi pi-arrow-right-arrow-left',
+      title: 'One-click movement with audit trail',
+      text: 'Multi-select sheets, hit "Send to next" — they move, status flips to In-Process, and a full movement record is written. Every move is visible later in the per-sheet history drawer.'
     },
     {
-      icon: 'pi pi-users',
-      title: 'Operator Performance',
-      text: 'Measure cycle times, scrap and rework per operator with role-based access for the team.'
+      icon: 'pi pi-objects-column',
+      title: 'Batch mode for lamination & friends',
+      text: 'Floors that process loads (Lamination, Tempering) can run in batch mode — auto-confirm grouping or manual batch creation. Whole batches move together; dissolve when needed.'
     },
     {
-      icon: 'pi pi-check-circle',
-      title: 'Quality & Scrap Insights',
-      text: 'Log rejects against defect codes and spot trends before they impact customer deliveries.'
+      icon: 'pi pi-check-square',
+      title: 'Status workflow that matches the floor',
+      text: 'Pending · In Process · On Hold · Completed · Rejected · Delivered. Set per sheet or in bulk. Hold and reject states surface as alerts on the dashboard.'
     },
     {
-      icon: 'pi pi-chart-bar',
-      title: 'Dashboards & Reports',
-      text: 'Configurable dashboards for plant managers and exportable shift reports for review meetings.'
+      icon: 'pi pi-chart-pie',
+      title: 'Executive dashboard with live KPIs',
+      text: 'Total sheets, on-shopfloor count, completed, delivered. Status donut. Production-floor chip strip. Alerts panel for sheets on hold, ready for dispatch, added today, movements today.'
+    },
+    {
+      icon: 'pi pi-print',
+      title: 'Print-ready daily reports',
+      text: 'Two professional daily reports — one for production floors, one for storage. A4-formatted, group headers repeat per page, status pills colour-coded for paper.'
+    },
+    {
+      icon: 'pi pi-download',
+      title: 'CSV exports on every report',
+      text: 'Backend-generated CSVs (UTF-8 BOM, RFC-4180 quoting) that open cleanly in Excel. Mirrors the active filters on the report. No client-side library required.'
+    },
+    {
+      icon: 'pi pi-database',
+      title: 'Complete master setup',
+      text: 'Plants, Shopfloors, Processes, Customers, Employees, Roles. Each with code, status, contact details, and tenant-isolated unique constraints.'
+    },
+    {
+      icon: 'pi pi-building',
+      title: 'Multi-plant ready',
+      text: 'Run one company across multiple factory locations. Configure every plant — address, contact, shopfloors, processes, employees — under a single workspace. Filter dashboards and reports per plant.'
+    },
+    {
+      icon: 'pi pi-credit-card',
+      title: 'Plans that scale with you',
+      text: 'Free trial up to 100 sheets to evaluate. Starter / Pro / Enterprise tiers raise the limits on sheets, users, shopfloors and history retention. Switch any time from the billing page.'
+    },
+    {
+      icon: 'pi pi-mobile',
+      title: 'Built for shopfloor screens',
+      text: 'Industrial UI — high-contrast status colours, large click targets, sticky selection bars, skeleton loading. Works on a wall tablet or a supervisor laptop.'
     }
   ];
 
   protected readonly stats = [
-    { value: '24/7', label: 'Live shopfloor data' },
-    { value: '<2s', label: 'Update latency' },
-    { value: '100%', label: 'Paperless traceability' }
+    { value: '6',     label: 'Status states tracked per sheet' },
+    { value: '<1s',   label: 'Move latency end-to-end' },
+    { value: '100%',  label: 'Audit trail on every movement' }
   ];
 
-  protected readonly lines = [
-    { name: 'Line A', status: 'Running', detail: 'OEE 87%', severity: 'success' as const, icon: 'pi pi-play' },
-    { name: 'Line B', status: 'Changeover', detail: '04:12', severity: 'warn' as const, icon: 'pi pi-sync' },
-    { name: 'Line C', status: 'Stopped', detail: 'No material', severity: 'danger' as const, icon: 'pi pi-times' },
-    { name: 'Line D', status: 'Running', detail: 'OEE 92%', severity: 'success' as const, icon: 'pi pi-play' }
+  protected readonly floors = [
+    { name: 'Storage',     code: 'STORAGE', detail: '12 sheets · entry point',     severity: 'info'    as const, icon: 'pi pi-box' },
+    { name: 'Cutting',     code: 'SF1',     detail: '30 in progress',              severity: 'warn'    as const, icon: 'pi pi-cog' },
+    { name: 'Edging',      code: 'SF2',     detail: '15 in progress',              severity: 'warn'    as const, icon: 'pi pi-cog' },
+    { name: 'Lamination',  code: 'SF3',     detail: '2 batches active',            severity: 'success' as const, icon: 'pi pi-objects-column' },
+    { name: 'Blackborder', code: 'SF4',     detail: '22 sheets · ready to ship',   severity: 'success' as const, icon: 'pi pi-check' }
   ];
 
   protected readonly steps = [
-    { num: 1, title: 'Connect', text: 'Onboard your machines, work centers and operators in minutes.' },
-    { num: 2, title: 'Capture', text: 'Log production, downtime and scrap from terminals, tablets or PLC signals.' },
-    { num: 3, title: 'Improve', text: 'Review live KPIs and act on bottlenecks before they cost you the shift.' }
+    {
+      num: 1,
+      title: 'Create your workspace',
+      text: 'Sign up with your company name. You get an isolated tenant, your own Admin user, and a 14-day Free trial — no card required.'
+    },
+    {
+      num: 2,
+      title: 'Configure floors & import sheets',
+      text: 'Add your masters (Plants, Customers, Shopfloors with the right sequence and batch mode). Bulk-import opening stock from Excel into Storage.'
+    },
+    {
+      num: 3,
+      title: 'Run live production',
+      text: 'Operators select sheets and move them down the pipeline. Supervisors watch the dashboard. Owners print the daily report. Done in a day.'
+    }
   ];
 
+  protected readonly plans = [
+    { code: 'free',       name: 'Free',       price: '$0',   sub: '100 sheets · 2 users · 3 floors',     tone: 'neutral' as const, popular: false },
+    { code: 'starter',    name: 'Starter',    price: '$29',  sub: '1k sheets · 10 users · 10 floors',    tone: 'primary' as const, popular: false },
+    { code: 'pro',        name: 'Pro',        price: '$99',  sub: '10k sheets · 50 users · 50 floors',   tone: 'primary' as const, popular: true  },
+    { code: 'enterprise', name: 'Enterprise', price: '$299', sub: '100k sheets · 500 users · unlimited', tone: 'neutral' as const, popular: false }
+  ];
 }

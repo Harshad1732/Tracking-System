@@ -1,12 +1,432 @@
 @import "primeicons/primeicons.css";
 
+:root {
+  --color-primary: #2563eb;
+  --color-primary-600: #1d4ed8;
+  --color-primary-50: #eff6ff;
+  --color-accent: #22d3ee;
+
+  --bg-app: #f4f6fb;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #f8fafc;
+  --bg-sidebar: #0b1220;
+  --bg-sidebar-elev: #111a2e;
+  --bg-sidebar-active: rgba(37, 99, 235, 0.18);
+
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-soft: #475569;
+  --text-invert: #e6ecf5;
+  --text-invert-muted: #94a3b8;
+
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-dark: #1e2a44;
+
+  --status-pending: #64748b;
+  --status-pending-bg: #f1f5f9;
+  --status-process: #2563eb;
+  --status-process-bg: #eff6ff;
+  --status-hold: #d97706;
+  --status-hold-bg: #fef3c7;
+  --status-rejected: #dc2626;
+  --status-rejected-bg: #fee2e2;
+  --status-completed: #16a34a;
+  --status-completed-bg: #dcfce7;
+  --status-delivered: #0891b2;
+  --status-delivered-bg: #cffafe;
+
+  --sidebar-w: 260px;
+  --sidebar-w-collapsed: 76px;
+  --topbar-h: 64px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 14px rgba(15, 23, 42, 0.04);
+  --shadow-pop: 0 12px 30px rgba(15, 23, 42, 0.12);
+
+  --transition-fast: 150ms ease;
+}
+
 html, body {
   margin: 0;
   padding: 0;
   min-height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--bg-app);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 * { box-sizing: border-box; }
+
+a { color: var(--color-primary); }
+
+/* =========================================================
+   Shared master-page primitives.
+   Reusable across Plant / Process / Employee / Customer / Role.
+   ========================================================= */
+
+.m-page { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.m-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  .m-page-head-text { min-width: 0; }
+
+  h1 {
+    margin: 0.4rem 0 0;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  .m-crumbs {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+
+    i { color: var(--color-primary); font-size: 0.85rem; }
+  }
+
+  .m-page-sub {
+    margin: 0.3rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .m-count-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    background: var(--color-primary-50);
+    color: var(--color-primary-600);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 500;
+
+    strong { font-weight: 700; }
+  }
+
+  .m-page-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+}
+
+.m-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.m-panel-head {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface-alt);
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.m-search {
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+
+  .p-iconfield { width: 100%; }
+  .p-inputtext { width: 100%; background: var(--bg-surface); }
+  .p-inputicon { color: var(--text-muted); }
+
+  .m-clear-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+
+    &:hover { background: var(--bg-surface-alt); color: var(--text); }
+  }
+}
+
+/* ------- Tables ------- */
+
+.m-table.p-datatable .p-datatable-thead > tr > th,
+.m-skeleton-table thead th {
+  background: var(--bg-surface-alt);
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.m-table.p-datatable .p-datatable-tbody > tr > td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--bg-surface-alt);
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+.m-table.p-datatable .p-datatable-tbody > tr:hover { background: var(--bg-surface-alt); }
+.m-table.p-datatable .p-datatable-tbody > tr:last-child > td { border-bottom: none; }
+
+.m-skeleton-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  tbody td {
+    padding: 0.95rem 1rem;
+    border-bottom: 1px solid var(--bg-surface-alt);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+}
+
+.m-code {
+  display: inline-block;
+  padding: 0.18rem 0.55rem;
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.m-name { font-weight: 600; color: var(--text); }
+.m-muted { color: var(--text-muted); }
+.m-mono { color: var(--text-soft); font-variant-numeric: tabular-nums; }
+
+.m-status-tag.p-tag {
+  font-size: 0.7rem;
+  padding: 0.18rem 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ------- Action icons ------- */
+
+.m-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+th.m-actions { justify-content: flex-end; padding-right: 1rem; }
+
+.m-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+
+  i { font-size: 0.85rem; }
+  &:hover { background: var(--bg-surface-alt); color: var(--text); border-color: var(--border-strong); }
+
+  &.danger:hover {
+    background: var(--status-rejected-bg);
+    color: var(--status-rejected);
+    border-color: var(--status-rejected-bg);
+  }
+}
+
+/* ------- Empty states ------- */
+
+.m-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+
+  h3 {
+    margin: 0.5rem 0 0;
+    font-size: 1.05rem;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0 auto;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    max-width: 380px;
+    line-height: 1.5;
+  }
+
+  &.subtle .m-empty-icon { background: var(--bg-surface-alt); color: var(--text-muted); }
+}
+
+.m-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-primary-50);
+  color: var(--color-primary);
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  margin-bottom: 0.4rem;
+
+  &.muted { background: var(--bg-surface-alt); color: var(--text-muted); }
+}
+
+/* ------- Dialog / form ------- */
+
+.m-dialog .p-dialog-content { padding: 1.25rem 1.5rem; }
+.m-dialog .p-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.m-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  .p-inputtext,
+  .p-textarea,
+  .p-select,
+  .p-inputnumber-input { width: 100%; font-size: 0.9rem; }
+}
+
+.m-form-row.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.m-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-soft);
+  }
+
+  .req { color: var(--status-rejected); margin-left: 0.15rem; }
+
+  .err {
+    font-size: 0.78rem;
+    color: var(--status-rejected);
+    margin-top: 0.1rem;
+  }
+}
+
+.m-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 38px;
+}
+
+.m-switch-label {
+  font-size: 0.88rem;
+  color: var(--text-soft);
+  font-weight: 500;
+}
+
+.m-perm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-alt);
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    color: var(--text);
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 700px) {
+  .m-form-row.two { grid-template-columns: 1fr; }
+  .m-perm-grid { grid-template-columns: 1fr; }
+  .m-actions { gap: 0.3rem; }
+}
+
+/* =========================================================
+   Print rules — hide app chrome so reports print cleanly.
+   ========================================================= */
+
+@media print {
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Hide the global app shell when printing — only the report content remains */
+  app-layout .sidebar,
+  app-layout .topbar,
+  app-layout p-toast,
+  app-layout p-confirmdialog,
+  .sel-bar,
+  .m-page-actions,
+  p-button {
+    display: none !important;
+  }
+
+  app-layout .layout {
+    display: block !important;
+    grid-template-columns: none !important;
+  }
+
+  app-layout .content {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+}

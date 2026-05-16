@@ -55,14 +55,38 @@ TemporaryDependencyNodeTargetIdentifier=net8.0
 [sourceFiles]
 Controllers/
  AuthController.cs
+ CustomersController.cs
+ EmployeesController.cs
+ PlantsController.cs
+ ProcessesController.cs
+ ReportsController.cs
+ RolesController.cs
+ SheetsController.cs
+ ShopfloorsController.cs
+ TenantControllerBase.cs
  UsersController.cs
 Data/AppDbContext.cs
-Dtos/AuthDtos.cs
+Dtos/
+ AuthDtos.cs
+ MasterDtos.cs
+ SheetDtos.cs
 Entities/
+ Customer.cs
+ Employee.cs
+ GlassSheet.cs
  PasswordResetToken.cs
+ Plant.cs
+ Process.cs
  RefreshToken.cs
+ RoleDefinition.cs
+ SheetMovement.cs
+ Shopfloor.cs
  Tenant.cs
  User.cs
+Migrations/
+ 20260515184552_InitialCreate.cs
+ 20260515184552_InitialCreate.Designer.cs
+ AppDbContextModelSnapshot.cs
 obj/Debug/net8.0/
  .NETCoreApp,Version=v8.0.AssemblyAttributes.cs
  Tracker.AssemblyInfo.cs
@@ -383,17 +407,21 @@ Services/
  System.Xml.XPath.XDocument.dll
  WindowsBase.dll
 <NUGET>/
+ azure.core/1.35.0/lib/net6.0/Azure.Core.dll
+ azure.identity/1.10.3/lib/netstandard2.0/Azure.Identity.dll
  bcrypt.net-next/4.0.3/lib/net6.0/BCrypt.Net-Next.dll
  google.apis.auth/1.68.0/lib/net6.0/Google.Apis.Auth.dll
  google.apis.core/1.68.0/lib/net6.0/Google.Apis.Core.dll
  google.apis/1.68.0/lib/net6.0/Google.Apis.dll
  microsoft.aspnetcore.authentication.jwtbearer/8.0.10/lib/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
- microsoft.data.sqlite.core/8.0.10/lib/net8.0/Microsoft.Data.Sqlite.dll
+ microsoft.bcl.asyncinterfaces/6.0.0/lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll
+ microsoft.data.sqlclient/5.1.5/ref/net6.0/Microsoft.Data.SqlClient.dll
  microsoft.entityframeworkcore.abstractions/8.0.10/lib/net8.0/Microsoft.EntityFrameworkCore.Abstractions.dll
  microsoft.entityframeworkcore.relational/8.0.10/lib/net8.0/Microsoft.EntityFrameworkCore.Relational.dll
- microsoft.entityframeworkcore.sqlite.core/8.0.10/lib/net8.0/Microsoft.EntityFrameworkCore.Sqlite.dll
+ microsoft.entityframeworkcore.sqlserver/8.0.10/lib/net8.0/Microsoft.EntityFrameworkCore.SqlServer.dll
  microsoft.entityframeworkcore/8.0.10/lib/net8.0/Microsoft.EntityFrameworkCore.dll
- microsoft.extensions.dependencymodel/8.0.2/lib/net8.0/Microsoft.Extensions.DependencyModel.dll
+ microsoft.identity.client.extensions.msal/4.56.0/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll
+ microsoft.identity.client/4.56.0/lib/net6.0/Microsoft.Identity.Client.dll
  microsoft.identitymodel.abstractions/7.6.0/lib/net8.0/Microsoft.IdentityModel.Abstractions.dll
  microsoft.identitymodel.jsonwebtokens/7.6.0/lib/net8.0/Microsoft.IdentityModel.JsonWebTokens.dll
  microsoft.identitymodel.logging/7.6.0/lib/net8.0/Microsoft.IdentityModel.Logging.dll
@@ -401,16 +429,16 @@ Services/
  microsoft.identitymodel.protocols/7.6.0/lib/net8.0/Microsoft.IdentityModel.Protocols.dll
  microsoft.identitymodel.tokens/7.6.0/lib/net8.0/Microsoft.IdentityModel.Tokens.dll
  microsoft.openapi/1.6.14/lib/netstandard2.0/Microsoft.OpenApi.dll
+ microsoft.sqlserver.server/1.0.0/lib/netstandard2.0/Microsoft.SqlServer.Server.dll
  newtonsoft.json/13.0.3/lib/net6.0/Newtonsoft.Json.dll
- sqlitepclraw.bundle_e_sqlite3/2.1.6/lib/netstandard2.0/SQLitePCLRaw.batteries_v2.dll
- sqlitepclraw.core/2.1.6/lib/netstandard2.0/SQLitePCLRaw.core.dll
- sqlitepclraw.provider.e_sqlite3/2.1.6/lib/net6.0/SQLitePCLRaw.provider.e_sqlite3.dll
  swashbuckle.aspnetcore.swagger/6.6.2/lib/net8.0/Swashbuckle.AspNetCore.Swagger.dll
  swashbuckle.aspnetcore.swaggergen/6.6.2/lib/net8.0/Swashbuckle.AspNetCore.SwaggerGen.dll
  swashbuckle.aspnetcore.swaggerui/6.6.2/lib/net8.0/Swashbuckle.AspNetCore.SwaggerUI.dll
  system.codedom/7.0.0/lib/net7.0/System.CodeDom.dll
  system.identitymodel.tokens.jwt/7.6.0/lib/net8.0/System.IdentityModel.Tokens.Jwt.dll
  system.management/7.0.2/lib/net7.0/System.Management.dll
+ system.memory.data/1.0.2/lib/netstandard2.0/System.Memory.Data.dll
+ system.security.cryptography.protecteddata/6.0.0/lib/net6.0/System.Security.Cryptography.ProtectedData.dll
 
 [analyzerReferences]
 <DOTNET>/packs/Microsoft.AspNetCore.App.Ref/8.0.17/analyzers/dotnet/cs/

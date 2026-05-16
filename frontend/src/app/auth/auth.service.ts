@@ -76,4 +76,28 @@ export class AuthService {
     if (!raw) return null;
     try { return JSON.parse(raw) as AuthResponse; } catch { return null; }
   }
+
+  seedFakeAuth(): void {
+    this.setAuth(this.buildDummy());
+  }
+
+  private buildDummy(): AuthResponse {
+    const inOneDay = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    return {
+      accessToken: 'dev-bypass-token',
+      refreshToken: 'dev-bypass-refresh',
+      accessTokenExpiresAtUtc: inOneDay,
+      user: {
+        id: '00000000-0000-0000-0000-000000000001',
+        email: 'admin@tracker.local',
+        fullName: 'Tracker Admin',
+        role: 'Admin'
+      },
+      tenant: {
+        id: '00000000-0000-0000-0000-000000000001',
+        name: 'Demo Workspace',
+        slug: 'demo'
+      }
+    };
+  }
 }

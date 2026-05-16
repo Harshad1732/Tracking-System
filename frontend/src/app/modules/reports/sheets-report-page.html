@@ -1,0 +1,126 @@
+<section class="m-page">
+  <header class="m-page-head">
+    <div class="m-page-head-text">
+      <span class="m-crumbs"><i class="pi pi-chart-bar"></i> Reports / {{ config().crumbLabel }}</span>
+      <h1>{{ config().title }}</h1>
+      <p class="m-page-sub">
+        {{ config().description }}
+        @if (!sheets.loading()) {
+          <span class="m-count-chip">
+            <strong>{{ displayCount() }}</strong> shown
+            @if (displayCount() !== totalCount()) { · of {{ totalCount() }} }
+          </span>
+        }
+      </p>
+    </div>
+    <div class="m-page-actions">
+      <p-button label="Export CSV" icon="pi pi-download" severity="secondary" [outlined]="true"
+                [loading]="exporting()" (onClick)="exportCsv()"></p-button>
+      <p-button label="Refresh" icon="pi pi-refresh" severity="secondary" [text]="true"
+                (onClick)="reload()"></p-button>
+    </div>
+  </header>
+
+  <div class="m-panel">
+    <div class="m-panel-head report-filters">
+      <p-iconfield iconPosition="left" class="m-search">
+        <p-inputicon class="pi pi-search"></p-inputicon>
+        <input pInputText type="text"
+               placeholder="Search by sheet no, order, customer, type..."
+               [value]="search()"
+               (input)="search.set($any($event.target).value)" />
+      </p-iconfield>
+      <p-select [options]="shopfloorOptions()"
+                [ngModel]="shopfloorFilter()"
+                (ngModelChange)="shopfloorFilter.set($event)"
+                [filter]="true" appendTo="body" placeholder="All shopfloors"
+                class="filter-select"></p-select>
+      <p-select [options]="customerOptions()"
+                [ngModel]="customerFilter()"
+                (ngModelChange)="customerFilter.set($event)"
+                [filter]="true" appendTo="body" placeholder="All customers"
+                class="filter-select"></p-select>
+      @if (search() || shopfloorFilter() || customerFilter()) {
+        <p-button label="Clear" icon="pi pi-times" severity="secondary" [text]="true"
+                  (onClick)="clearFilters()"></p-button>
+      }
+    </div>
+
+    @if (sheets.loading()) {
+      <table class="m-skeleton-table">
+        <thead>
+          <tr>
+            <th>Sheet No</th><th>Order</th><th>Customer</th><th>Current Floor</th>
+            <th>Status</th><th>Days</th><th>Last moved</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (_ of skeletonRows; track $index) {
+            <tr>
+              <td><p-skeleton width="5rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="5rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="8rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
+              <td><p-skeleton width="2rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="7rem" height="1rem"></p-skeleton></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (sheets.items().length === 0) {
+      <div class="m-empty">
+        <div class="m-empty-icon"><i [class]="config().icon"></i></div>
+        <h3>No sheets to report</h3>
+        <p>Once sheets match this report's criteria, they'll appear here.</p>
+        <p-button label="Open Storage" icon="pi pi-arrow-right" routerLink="/dashboard"></p-button>
+      </div>
+    } @else if (filtered().length === 0) {
+      <div class="m-empty subtle">
+        <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
+        <h3>No sheets match the current filters</h3>
+        <p>Try adjusting the filters or clearing them.</p>
+        <p-button label="Clear filters" icon="pi pi-times" severity="secondary" [outlined]="true"
+                  (onClick)="clearFilters()"></p-button>
+      </div>
+    } @else {
+      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '64rem' }">
+        <ng-template #header>
+          <tr>
+            <th>Sheet No</th><th>Order</th><th>Customer</th><th>Current Floor</th>
+            <th>Type · Size</th><th>Qty</th><th>Status</th><th>Days</th><th>Last moved</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-s>
+          <tr>
+            <td><span class="m-code">{{ s.sheetNo }}</span></td>
+            <td class="m-muted">{{ s.orderNo || '—' }}</td>
+            <td class="m-name">{{ s.customerName || '—' }}</td>
+            <td>
+              <span class="floor-cell">
+                @if (s.currentShopfloorCode === 'STORAGE') {
+                  <i class="pi pi-box" style="color: var(--status-delivered);"></i>
+                } @else {
+                  <i class="pi pi-cog" style="color: var(--color-primary);"></i>
+                }
+                {{ s.currentShopfloorName }}
+              </span>
+            </td>
+            <td class="m-muted">
+              {{ s.glassType || '—' }}
+              @if (s.width || s.height) {
+                <span class="m-mono"> · {{ s.width || '—' }}×{{ s.height || '—' }}</span>
+              }
+            </td>
+            <td class="m-mono">{{ s.quantity }}</td>
+            <td>
+              <p-tag [value]="s.status" [severity]="statusSeverity(s.status)" class="m-status-tag"></p-tag>
+            </td>
+            <td class="m-mono">{{ daysSince(s.entryAtUtc) }}</td>
+            <td class="m-muted">{{ s.lastMovedAtUtc | date: 'MMM d, h:mm a' }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</section>

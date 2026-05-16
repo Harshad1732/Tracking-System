@@ -1,0 +1,165 @@
+<section class="m-page">
+  <header class="m-page-head">
+    <div class="m-page-head-text">
+      <span class="m-crumbs"><i class="pi pi-database"></i> Masters / Role Master</span>
+      <h1>Roles</h1>
+      <p class="m-page-sub">
+        Define what each role can do — view, add, edit, delete, view reports.
+        @if (!store.loading()) {
+          <span class="m-count-chip">
+            <strong>{{ store.items().length }}</strong> total ·
+            <strong>{{ store.activeCount() }}</strong> active
+          </span>
+        }
+      </p>
+    </div>
+    <div class="m-page-actions">
+      <p-button label="Add Role" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+    </div>
+  </header>
+
+  <div class="m-panel">
+    <div class="m-panel-head">
+      <p-iconfield iconPosition="left" class="m-search">
+        <p-inputicon class="pi pi-search"></p-inputicon>
+        <input pInputText type="text"
+               placeholder="Search by name or description..."
+               [value]="search()"
+               (input)="search.set($any($event.target).value)" />
+        @if (search()) {
+          <button class="m-clear-btn" (click)="clearSearch()" type="button" aria-label="Clear search">
+            <i class="pi pi-times"></i>
+          </button>
+        }
+      </p-iconfield>
+    </div>
+
+    @if (store.loading()) {
+      <table class="m-skeleton-table">
+        <thead>
+          <tr>
+            <th>Role</th><th>Description</th><th>Permissions</th>
+            <th>Status</th><th>Created</th><th class="m-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (_ of skeletonRows; track $index) {
+            <tr>
+              <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="14rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="10rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
+              <td><p-skeleton width="6rem" height="1rem"></p-skeleton></td>
+              <td class="m-actions">
+                <p-skeleton shape="circle" size="2rem"></p-skeleton>
+                <p-skeleton shape="circle" size="2rem"></p-skeleton>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (filtered().length === 0 && store.items().length === 0) {
+      <div class="m-empty">
+        <div class="m-empty-icon"><i class="pi pi-id-card"></i></div>
+        <h3>No roles yet</h3>
+        <p>Roles like Admin, Supervisor, Operator and Viewer keep access scoped.</p>
+        <p-button label="Add first role" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+      </div>
+    } @else if (filtered().length === 0) {
+      <div class="m-empty subtle">
+        <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
+        <h3>No roles match “{{ search() }}”</h3>
+        <p>Try a different keyword or clear the search.</p>
+        <p-button label="Clear search" icon="pi pi-times" severity="secondary" [outlined]="true" (onClick)="clearSearch()"></p-button>
+      </div>
+    } @else {
+      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '54rem' }">
+        <ng-template #header>
+          <tr>
+            <th>Role</th><th>Description</th><th>Permissions</th>
+            <th>Status</th><th>Created</th><th class="m-actions">Actions</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-r>
+          <tr>
+            <td class="m-name">{{ r.name }}</td>
+            <td class="m-muted">{{ r.description || '—' }}</td>
+            <td>
+              <div class="perm-row">
+                @for (p of permLabels(r); track p) {
+                  <span class="perm-chip">{{ p }}</span>
+                }
+                @if (permLabels(r).length === 0) {
+                  <span class="m-muted">— None —</span>
+                }
+              </div>
+            </td>
+            <td>
+              <p-tag [value]="r.isActive ? 'Active' : 'Inactive'"
+                     [severity]="r.isActive ? 'success' : 'secondary'"
+                     class="m-status-tag"></p-tag>
+            </td>
+            <td class="m-muted">{{ r.createdAtUtc | date: 'MMM d, y' }}</td>
+            <td class="m-actions">
+              <button class="m-icon-btn" (click)="openEdit(r)" pTooltip="Edit" tooltipPosition="top" aria-label="Edit">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="m-icon-btn danger" (click)="onDelete(r)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
+                <i class="pi pi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</section>
+
+<p-dialog
+  [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
+  [style]="{ width: '560px' }"
+  [header]="editing() ? 'Edit Role' : 'Add Role'"
+  class="m-dialog">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="m-form">
+    <div class="m-field">
+      <label for="name">Role name <span class="req">*</span></label>
+      <input pInputText id="name" formControlName="name" placeholder="Supervisor" autocomplete="off" />
+      @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
+    </div>
+
+    <div class="m-field">
+      <label for="description">Description</label>
+      <textarea pTextarea id="description" formControlName="description" rows="2"
+                placeholder="What this role is allowed to do"></textarea>
+    </div>
+
+    <div class="m-field">
+      <label>Permissions</label>
+      <div class="m-perm-grid">
+        <label><p-checkbox formControlName="canView" [binary]="true" inputId="canView"></p-checkbox> View</label>
+        <label><p-checkbox formControlName="canAdd" [binary]="true" inputId="canAdd"></p-checkbox> Add</label>
+        <label><p-checkbox formControlName="canEdit" [binary]="true" inputId="canEdit"></p-checkbox> Edit</label>
+        <label><p-checkbox formControlName="canDelete" [binary]="true" inputId="canDelete"></p-checkbox> Delete</label>
+        <label><p-checkbox formControlName="canViewReports" [binary]="true" inputId="canViewReports"></p-checkbox> View reports</label>
+      </div>
+    </div>
+
+    <div class="m-field">
+      <label>Status</label>
+      <div class="m-switch-row">
+        <p-toggleswitch formControlName="isActive" inputId="isActive"></p-toggleswitch>
+        <span class="m-switch-label">{{ form.value.isActive ? 'Active' : 'Inactive' }}</span>
+      </div>
+    </div>
+  </form>
+
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="store.saving()" (onClick)="closeDialog()"></p-button>
+    <p-button [label]="editing() ? 'Save changes' : 'Add Role'"
+              [icon]="editing() ? 'pi pi-check' : 'pi pi-plus'"
+              [loading]="store.saving()" [disabled]="form.invalid"
+              (onClick)="submit()"></p-button>
+  </ng-template>
+</p-dialog>

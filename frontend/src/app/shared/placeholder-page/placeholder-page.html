@@ -1,0 +1,22 @@
+<section class="placeholder">
+  <div class="card">
+    <div class="icon">
+      <i [class]="config().icon"></i>
+    </div>
+    <h2>{{ config().title }}</h2>
+    <p class="lead">{{ config().description }}</p>
+
+    @if (config().bullets?.length) {
+      <ul class="bullets">
+        @for (b of config().bullets; track b) {
+          <li><i class="pi pi-check"></i><span>{{ b }}</span></li>
+        }
+      </ul>
+    }
+
+    <div class="tag-line">
+      <i class="pi pi-info-circle"></i>
+      <span>Phase&nbsp;2 work — this module will ship next.</span>
+    </div>
+  </div>
+</section>

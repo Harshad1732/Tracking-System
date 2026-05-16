@@ -1,0 +1,112 @@
+<div class="layout" [class.collapsed]="collapsed()">
+  <aside class="sidebar">
+    <div class="brand">
+      <p-avatar label="T" shape="circle" class="brand-mark"></p-avatar>
+      @if (!collapsed()) {
+        <div class="brand-text">
+          <span class="brand-name">Tracker</span>
+          @if (auth.tenant(); as t) {
+            <span class="brand-sub">{{ t.name }}</span>
+          }
+        </div>
+      }
+    </div>
+
+    <nav class="nav">
+      @for (node of nav; track node.labelKey) {
+        @if (isGroup(node)) {
+          <button
+            type="button"
+            class="nav-item nav-group-header"
+            [class.open]="isOpen(node.key)"
+            (click)="toggleGroup(node.key)"
+            [pTooltip]="collapsed() ? (node.labelKey | t) : ''"
+            tooltipPosition="right">
+            <i class="nav-icon" [ngClass]="node.icon"></i>
+            <span class="nav-label">{{ node.labelKey | t }}</span>
+            <i class="nav-chevron pi pi-chevron-right"></i>
+          </button>
+          @if (isOpen(node.key) && !collapsed()) {
+            <div class="nav-children">
+              @for (child of node.children; track child.link) {
+                <a
+                  [routerLink]="child.link"
+                  routerLinkActive="active"
+                  class="nav-item nav-child">
+                  <span class="nav-dot"></span>
+                  <i class="nav-icon child-icon" [ngClass]="child.icon"></i>
+                  <span class="nav-label">{{ child.labelKey | t }}</span>
+                </a>
+              }
+            </div>
+          }
+        } @else {
+          <a
+            [routerLink]="node.link"
+            routerLinkActive="active"
+            class="nav-item nav-leaf"
+            [pTooltip]="collapsed() ? (node.labelKey | t) : ''"
+            tooltipPosition="right">
+            <i class="nav-icon" [ngClass]="node.icon"></i>
+            <span class="nav-label">{{ node.labelKey | t }}</span>
+          </a>
+        }
+      }
+    </nav>
+
+    <div class="sidebar-foot">
+      <button type="button" class="collapse-btn" (click)="toggleCollapse()"
+              [attr.aria-label]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'">
+        <i class="pi" [ngClass]="collapsed() ? 'pi-angle-double-right' : 'pi-angle-double-left'"></i>
+        @if (!collapsed()) { <span>Collapse</span> }
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button type="button" class="icon-btn mobile-toggle" (click)="toggleCollapse()" aria-label="Toggle sidebar">
+          <i class="pi pi-bars"></i>
+        </button>
+        <div class="search">
+          <i class="pi pi-search"></i>
+          <input type="text" placeholder="Search sheets, customers, processes..." disabled />
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <button type="button" class="icon-btn lang-chip" (click)="openLangMenu($event)"
+                [pTooltip]="('lang.label' | t)" tooltipPosition="bottom" aria-label="Language">
+          <i class="pi pi-globe"></i>
+          <span class="lang-code">{{ i18n.current().flag }}</span>
+        </button>
+        <p-menu #langMenu [model]="langMenuItems()" [popup]="true" appendTo="body"></p-menu>
+
+        <button type="button" class="icon-btn" pTooltip="Notifications" tooltipPosition="bottom" aria-label="Notifications">
+          <i class="pi pi-bell"></i>
+          <p-badge value="0" severity="secondary" class="bell-badge"></p-badge>
+        </button>
+
+        <button type="button" class="user-chip" (click)="openUserMenu($event)" aria-haspopup="true">
+          <p-avatar [label]="initials()" shape="circle" class="user-avatar"></p-avatar>
+          <span class="user-meta">
+            <span class="user-name">{{ auth.user()?.fullName || auth.user()?.email }}</span>
+            <span class="user-role">
+              <p-tag [value]="auth.role() || 'User'" severity="info" class="role-tag"></p-tag>
+            </span>
+          </span>
+          <i class="pi pi-chevron-down user-caret"></i>
+        </button>
+        <p-menu #userMenu [model]="userMenuItems()" [popup]="true" appendTo="body"></p-menu>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+
+  <p-toast position="top-right"></p-toast>
+  <p-confirmdialog></p-confirmdialog>
+</div>

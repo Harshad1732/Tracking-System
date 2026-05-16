@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "d:\\Tracking System\\backend\\Tracker.csproj": {}
+    "D:\\Tracking System\\backend\\Tracker.csproj": {}
   },
   "projects": {
-    "d:\\Tracking System\\backend\\Tracker.csproj": {
+    "D:\\Tracking System\\backend\\Tracker.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\Tracking System\\backend\\Tracker.csproj",
+        "projectUniqueName": "D:\\Tracking System\\backend\\Tracker.csproj",
         "projectName": "Tracker",
-        "projectPath": "d:\\Tracking System\\backend\\Tracker.csproj",
+        "projectPath": "D:\\Tracking System\\backend\\Tracker.csproj",
         "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "d:\\Tracking System\\backend\\obj\\",
+        "outputPath": "D:\\Tracking System\\backend\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -69,7 +69,7 @@
               "target": "Package",
               "version": "[8.0.10, )"
             },
-            "Microsoft.EntityFrameworkCore.Sqlite": {
+            "Microsoft.EntityFrameworkCore.SqlServer": {
               "target": "Package",
               "version": "[8.0.10, )"
             },

@@ -1,0 +1,66 @@
+<section class="plans-page">
+  <header class="plans-head">
+    <span class="plans-eyebrow">Pricing</span>
+    <h1>Plans that scale with your shopfloor</h1>
+    <p>Every plan includes the full feature set. Pick a tier that matches your throughput.</p>
+  </header>
+
+  @if (loading()) {
+    <div class="plan-grid">
+      @for (_ of [1,2,3,4]; track $index) {
+        <p-skeleton height="420px" borderRadius="14px"></p-skeleton>
+      }
+    </div>
+  } @else {
+    <div class="plan-grid">
+      @for (p of plans(); track p.id) {
+        <article class="plan-card"
+                 [class.popular]="p.code === 'pro'"
+                 [class.current]="isCurrent(p.code)">
+          @if (p.code === 'pro') { <span class="plan-tag popular-tag">Most popular</span> }
+          @if (isCurrent(p.code)) { <span class="plan-tag current-tag">Current plan</span> }
+
+          <h3>{{ p.name }}</h3>
+          <p class="plan-desc">{{ p.description }}</p>
+
+          <div class="plan-price">
+            <span class="plan-amount">{{ priceLabel(p) }}</span>
+            @if (p.monthlyPriceCents > 0) { <span class="plan-period">/ month</span> }
+          </div>
+
+          <ul class="plan-features">
+            <li><i class="pi pi-box"></i> Up to <strong>{{ formatLimit(p.maxSheets) }}</strong> sheets</li>
+            <li><i class="pi pi-user"></i> Up to <strong>{{ formatLimit(p.maxUsers) }}</strong> users</li>
+            <li><i class="pi pi-compass"></i> Up to <strong>{{ formatLimit(p.maxShopfloors) }}</strong> shopfloors</li>
+            <li><i class="pi pi-clock"></i> <strong>
+              @if (p.retentionDays < 0) { Unlimited } @else { {{ p.retentionDays }}-day }
+            </strong> history retention</li>
+            <li><i class="pi pi-check-circle"></i> All masters, reports, batch mode, Excel import</li>
+            <li><i class="pi pi-print"></i> Print-friendly daily reports + CSV export</li>
+          </ul>
+
+          <p-button
+            [label]="isCurrent(p.code) ? 'Your current plan' : (auth.isAuthenticated() ? 'Switch to ' + p.name : 'Start with ' + p.name)"
+            [icon]="isCurrent(p.code) ? 'pi pi-check' : 'pi pi-arrow-right'"
+            iconPos="right"
+            [severity]="p.code === 'pro' ? undefined : 'secondary'"
+            [outlined]="p.code !== 'pro' && !isCurrent(p.code)"
+            [disabled]="isCurrent(p.code) || upgrading()"
+            [loading]="upgrading()"
+            (onClick)="select(p.code)"
+            class="plan-cta"></p-button>
+        </article>
+      }
+    </div>
+  }
+
+  @if (!auth.isAuthenticated()) {
+    <div class="plans-cta">
+      Already have a workspace? <a routerLink="/login">Sign in</a>
+    </div>
+  }
+
+  <p class="plans-foot">
+    All paid tiers are managed via your billing portal. Switch or cancel any time.
+  </p>
+</section>

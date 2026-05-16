@@ -1,0 +1,189 @@
+<section class="m-page">
+  <header class="m-page-head">
+    <div class="m-page-head-text">
+      <span class="m-crumbs"><i class="pi pi-database"></i> Masters / Shopfloor Master</span>
+      <h1>Shopfloors</h1>
+      <p class="m-page-sub">
+        Physical locations on the floor. Sheets flow through them in sequence — set one as <strong>Storage</strong>
+        for the entry point.
+        @if (!store.loading()) {
+          <span class="m-count-chip">
+            <strong>{{ store.items().length }}</strong> total ·
+            <strong>{{ store.activeCount() }}</strong> active
+          </span>
+        }
+      </p>
+    </div>
+    <div class="m-page-actions">
+      <p-button label="Add Shopfloor" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+    </div>
+  </header>
+
+  <div class="m-panel">
+    <div class="m-panel-head">
+      <p-iconfield iconPosition="left" class="m-search">
+        <p-inputicon class="pi pi-search"></p-inputicon>
+        <input pInputText type="text"
+               placeholder="Search by code, name, process..."
+               [value]="search()"
+               (input)="search.set($any($event.target).value)" />
+        @if (search()) {
+          <button class="m-clear-btn" (click)="clearSearch()" type="button" aria-label="Clear search">
+            <i class="pi pi-times"></i>
+          </button>
+        }
+      </p-iconfield>
+    </div>
+
+    @if (store.loading()) {
+      <table class="m-skeleton-table">
+        <thead>
+          <tr>
+            <th>Seq</th><th>Code</th><th>Name</th><th>Process</th><th>Type</th>
+            <th>Sheets</th><th>Status</th><th class="m-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (_ of skeletonRows; track $index) {
+            <tr>
+              <td><p-skeleton width="2rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="4rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="8rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="7rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="5rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
+              <td><p-skeleton width="2rem" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="4rem" height="1.5rem" borderRadius="999px"></p-skeleton></td>
+              <td class="m-actions">
+                <p-skeleton shape="circle" size="2rem"></p-skeleton>
+                <p-skeleton shape="circle" size="2rem"></p-skeleton>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (filtered().length === 0 && store.items().length === 0) {
+      <div class="m-empty">
+        <div class="m-empty-icon"><i class="pi pi-compass"></i></div>
+        <h3>No shopfloors yet</h3>
+        <p>Add Storage first (with the Storage flag), then add SF1 / SF2 / SF3 / SF4 with sequence numbers.</p>
+        <p-button label="Add first shopfloor" icon="pi pi-plus" (onClick)="openAdd()"></p-button>
+      </div>
+    } @else if (filtered().length === 0) {
+      <div class="m-empty subtle">
+        <div class="m-empty-icon muted"><i class="pi pi-search"></i></div>
+        <h3>No shopfloors match “{{ search() }}”</h3>
+        <p>Try a different keyword or clear the search.</p>
+        <p-button label="Clear search" icon="pi pi-times" severity="secondary" [outlined]="true" (onClick)="clearSearch()"></p-button>
+      </div>
+    } @else {
+      <p-table [value]="filtered()" class="m-table" [tableStyle]="{ 'min-width': '60rem' }">
+        <ng-template #header>
+          <tr>
+            <th>Seq</th><th>Code</th><th>Name</th><th>Process</th><th>Type</th>
+            <th>Sheets</th><th>Status</th><th class="m-actions">Actions</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-s>
+          <tr>
+            <td class="m-mono">{{ s.sequenceNo }}</td>
+            <td><span class="m-code">{{ s.code }}</span></td>
+            <td class="m-name">{{ s.name }}</td>
+            <td class="m-muted">{{ s.processName || '—' }}</td>
+            <td>
+              @if (s.isStorage) {
+                <p-tag value="Storage" severity="info" class="m-status-tag"></p-tag>
+              } @else {
+                <p-tag value="Shopfloor" severity="secondary" class="m-status-tag"></p-tag>
+              }
+            </td>
+            <td class="m-mono">{{ s.sheetCount }}</td>
+            <td>
+              <p-tag [value]="s.isActive ? 'Active' : 'Inactive'"
+                     [severity]="s.isActive ? 'success' : 'secondary'"
+                     class="m-status-tag"></p-tag>
+            </td>
+            <td class="m-actions">
+              <button class="m-icon-btn" (click)="openEdit(s)" pTooltip="Edit" tooltipPosition="top" aria-label="Edit">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="m-icon-btn danger" (click)="onDelete(s)" pTooltip="Delete" tooltipPosition="top" aria-label="Delete">
+                <i class="pi pi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</section>
+
+<p-dialog
+  [visible]="dialogOpen()" (visibleChange)="dialogOpen.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!store.saving()" [closeOnEscape]="!store.saving()"
+  [style]="{ width: '560px' }"
+  [header]="editing() ? 'Edit Shopfloor' : 'Add Shopfloor'"
+  class="m-dialog">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="m-form">
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="code">Code <span class="req">*</span></label>
+        <input pInputText id="code" formControlName="code" placeholder="SF1" autocomplete="off" />
+        @if (hasError('code', 'required')) { <small class="err">Code is required.</small> }
+      </div>
+      <div class="m-field">
+        <label for="name">Name <span class="req">*</span></label>
+        <input pInputText id="name" formControlName="name" placeholder="Cutting" autocomplete="off" />
+        @if (hasError('name', 'required')) { <small class="err">Name is required.</small> }
+      </div>
+    </div>
+
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label for="sequenceNo">Sequence</label>
+        <p-inputnumber inputId="sequenceNo" formControlName="sequenceNo" [min]="0" [showButtons]="true"
+                       buttonLayout="horizontal" spinnerMode="horizontal" [step]="10"></p-inputnumber>
+      </div>
+      <div class="m-field">
+        <label for="processId">Process</label>
+        <p-select inputId="processId" formControlName="processId" [options]="processOptions()"
+                  appendTo="body" [filter]="true"></p-select>
+      </div>
+    </div>
+
+    <div class="m-form-row two">
+      <div class="m-field">
+        <label>Storage location</label>
+        <div class="m-switch-row">
+          <p-toggleswitch formControlName="isStorage" inputId="isStorage"></p-toggleswitch>
+          <span class="m-switch-label">{{ form.value.isStorage ? 'Yes — entry point' : 'No — process step' }}</span>
+        </div>
+      </div>
+      <div class="m-field">
+        <label>Status</label>
+        <div class="m-switch-row">
+          <p-toggleswitch formControlName="isActive" inputId="isActive"></p-toggleswitch>
+          <span class="m-switch-label">{{ form.value.isActive ? 'Active' : 'Inactive' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="m-field">
+      <label for="batchMode">Batch mode</label>
+      <p-select inputId="batchMode" formControlName="batchMode" [options]="batchModeOptions"
+                appendTo="body"></p-select>
+      <small style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+        Sheets arriving at this floor can be processed individually (None), grouped via a system prompt
+        (Auto-confirm — e.g. lamination loads), or grouped manually by the operator.
+      </small>
+    </div>
+  </form>
+
+  <ng-template #footer>
+    <p-button label="Cancel" severity="secondary" [text]="true" [disabled]="store.saving()" (onClick)="closeDialog()"></p-button>
+    <p-button [label]="editing() ? 'Save changes' : 'Add Shopfloor'"
+              [icon]="editing() ? 'pi pi-check' : 'pi pi-plus'"
+              [loading]="store.saving()" [disabled]="form.invalid"
+              (onClick)="submit()"></p-button>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,112 @@
+<section class="ws">
+  <!-- ===== Header ===== -->
+  <header class="ws-head">
+    <div>
+      <span class="ws-eyebrow"><i class="pi pi-compass"></i> Shopfloor Workspace</span>
+      <h1>Production at a glance</h1>
+      <p class="ws-sub">
+        Live snapshot of every floor.
+        @if (!loading()) {
+          <span class="ws-chip">
+            <strong>{{ flowTotal() }}</strong> sheet{{ flowTotal() === 1 ? '' : 's' }} on floor
+          </span>
+          @if (holdCount() > 0) {
+            <span class="ws-chip warn">
+              <i class="pi pi-pause-circle"></i>
+              <strong>{{ holdCount() }}</strong> on hold
+            </span>
+          }
+        }
+      </p>
+    </div>
+    <div class="ws-actions">
+      <p-button label="Refresh" icon="pi pi-refresh" severity="secondary" [text]="true"
+                (onClick)="refresh()"></p-button>
+    </div>
+  </header>
+
+  <!-- ===== Storage hero card (above pipeline) ===== -->
+  @if (loading()) {
+    <p-skeleton width="100%" height="160px" borderRadius="14px"></p-skeleton>
+  } @else if (storage(); as st) {
+    <article class="floor-hero">
+      <div class="floor-hero-icon"><i class="pi pi-box"></i></div>
+      <div class="floor-hero-body">
+        <span class="floor-hero-eyebrow">Entry point</span>
+        <h2>{{ st.name }} <span class="floor-hero-code">{{ st.code }}</span></h2>
+        <p class="floor-hero-sub">
+          <strong>{{ st.sheetCount }}</strong> sheet{{ st.sheetCount === 1 ? '' : 's' }} ready to move into production.
+        </p>
+      </div>
+      <div class="floor-hero-actions">
+        <p-button label="Import from Excel" icon="pi pi-upload"
+                  [routerLink]="['/shopfloors', st.code]"
+                  [queryParams]="{ import: 1 }"></p-button>
+        <p-button label="Add sheet" icon="pi pi-plus" severity="secondary" [outlined]="true"
+                  [routerLink]="['/shopfloors', st.code]"
+                  [queryParams]="{ add: 1 }"></p-button>
+        <p-button label="Open Storage →" severity="secondary" [text]="true"
+                  [routerLink]="['/shopfloors', st.code]"></p-button>
+      </div>
+    </article>
+  }
+
+  <!-- ===== Pipeline stepper ===== -->
+  <section class="card pipe-card">
+    <header class="card-head">
+      <div>
+        <h3>Production pipeline</h3>
+        <p>Sheets distributed across the flow. Click any stage to open it.</p>
+      </div>
+    </header>
+
+    @if (loading()) {
+      <p-skeleton width="100%" height="100px" borderRadius="14px"></p-skeleton>
+    } @else if (flow().length === 0) {
+      <div class="ws-empty">
+        <div class="ws-empty-icon"><i class="pi pi-compass"></i></div>
+        <h3>No shopfloors configured</h3>
+        <p>Add Storage and the production stages in the Shopfloor master to get started.</p>
+        <p-button label="Open Shopfloor Master" icon="pi pi-arrow-right" routerLink="/masters/shopfloors"></p-button>
+      </div>
+    } @else {
+      <div class="pipe">
+        @for (stop of flow(); track stop.floor.id; let last = $last) {
+          <a class="pipe-stop"
+             [class.is-storage]="stop.floor.isStorage"
+             [class.is-empty]="stop.count === 0"
+             [style.--floor-base]="stop.tone.base"
+             [style.--floor-dark]="stop.tone.dark"
+             [routerLink]="['/shopfloors', stop.floor.code]"
+             [pTooltip]="stop.floor.name + ': ' + stop.count + ' sheets'"
+             tooltipPosition="top">
+            <div class="pipe-stop-icon">
+              <i class="pi" [class.pi-box]="stop.floor.isStorage" [class.pi-cog]="!stop.floor.isStorage"></i>
+            </div>
+            <div class="pipe-stop-body">
+              <span class="pipe-stop-name">{{ stop.floor.name }}</span>
+              <span class="pipe-stop-meta">{{ stop.floor.code }} · {{ stop.pct | number: '1.0-1' }}%</span>
+            </div>
+            <div class="pipe-stop-count">{{ stop.count }}</div>
+          </a>
+          @if (!last) {
+            <div class="pipe-arrow" aria-hidden="true">
+              <i class="pi pi-arrow-right"></i>
+            </div>
+          }
+        }
+      </div>
+    }
+  </section>
+
+  <!-- ===== Footer links ===== -->
+  <footer class="ws-foot">
+    <a routerLink="/reports/daily" class="ws-foot-link">
+      <i class="pi pi-print"></i> Daily print report
+    </a>
+    <span class="ws-foot-sep">·</span>
+    <a routerLink="/reports/shopfloor" class="ws-foot-link">
+      <i class="pi pi-list"></i> Live sheet tracking
+    </a>
+  </footer>
+</section>

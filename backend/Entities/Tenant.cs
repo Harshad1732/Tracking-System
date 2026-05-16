@@ -16,4 +16,6 @@ public class Tenant
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public ICollection<User> Users { get; set; } = new List<User>();
+
+    public Subscription? Subscription { get; set; }
 }

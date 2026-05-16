@@ -1,0 +1,104 @@
+<section class="m-page">
+  <header class="m-page-head">
+    <div class="m-page-head-text">
+      <span class="m-crumbs"><i class="pi pi-credit-card"></i> Administration / Billing</span>
+      <h1>Billing &amp; subscription</h1>
+      <p class="m-page-sub">Your current plan, usage, and upgrade options.</p>
+    </div>
+    <div class="m-page-actions">
+      <p-button label="See plans" icon="pi pi-arrow-right" routerLink="/plans"></p-button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <p-skeleton width="100%" height="200px" borderRadius="14px"></p-skeleton>
+  } @else if (sub(); as s) {
+    <!-- Plan summary card -->
+    <article class="bill-card plan-summary">
+      <div class="bill-plan">
+        <span class="bill-eyebrow">Current plan</span>
+        <h2>{{ s.plan.name }}</h2>
+        <div class="bill-price">{{ priceLabel() }}</div>
+        @if (s.plan.description) { <p class="bill-desc">{{ s.plan.description }}</p> }
+      </div>
+      <div class="bill-status">
+        <p-tag [value]="s.status" [severity]="statusSeverity(s.status)" class="m-status-tag"></p-tag>
+        @if (s.status === 'Trial' && s.trialEndsAtUtc) {
+          <div class="bill-meta">
+            <strong>{{ trialDaysLeft() }}</strong> day{{ trialDaysLeft() === 1 ? '' : 's' }} left in trial
+            <span class="bill-meta-sub">Trial ends {{ s.trialEndsAtUtc | date: 'MMM d, y' }}</span>
+          </div>
+        } @else if (s.currentPeriodEndsAtUtc && s.status === 'Active') {
+          <div class="bill-meta">
+            Renews on
+            <strong>{{ s.currentPeriodEndsAtUtc | date: 'MMM d, y' }}</strong>
+          </div>
+        } @else if (s.status === 'Canceled' && s.canceledAtUtc) {
+          <div class="bill-meta">
+            Canceled on
+            <strong>{{ s.canceledAtUtc | date: 'MMM d, y' }}</strong>
+          </div>
+        }
+      </div>
+      <div class="bill-actions">
+        <p-button label="Change plan" icon="pi pi-arrows-h" routerLink="/plans"></p-button>
+        @if (s.status === 'Active' || s.status === 'Trial') {
+          <p-button label="Cancel" icon="pi pi-times" severity="secondary" [text]="true" (onClick)="cancel()"></p-button>
+        }
+      </div>
+    </article>
+
+    <!-- Usage -->
+    <article class="bill-card">
+      <header class="bill-card-head">
+        <h3>This month's usage</h3>
+        <p>Counts of resources your workspace has consumed.</p>
+      </header>
+
+      <div class="usage-grid">
+        <div class="usage-row" [attr.data-tone]="pctTone(s.usage.sheetsUsed, s.usage.sheetsLimit)">
+          <div class="usage-row-head">
+            <span class="usage-label"><i class="pi pi-box"></i> Sheets</span>
+            <span class="usage-num">{{ s.usage.sheetsUsed | number }} / {{ formatLimit(s.usage.sheetsLimit) }}</span>
+          </div>
+          <div class="usage-bar"><span [style.width.%]="pct(s.usage.sheetsUsed, s.usage.sheetsLimit)"></span></div>
+        </div>
+
+        <div class="usage-row" [attr.data-tone]="pctTone(s.usage.usersUsed, s.usage.usersLimit)">
+          <div class="usage-row-head">
+            <span class="usage-label"><i class="pi pi-user"></i> Users</span>
+            <span class="usage-num">{{ s.usage.usersUsed }} / {{ formatLimit(s.usage.usersLimit) }}</span>
+          </div>
+          <div class="usage-bar"><span [style.width.%]="pct(s.usage.usersUsed, s.usage.usersLimit)"></span></div>
+        </div>
+
+        <div class="usage-row" [attr.data-tone]="pctTone(s.usage.shopfloorsUsed, s.usage.shopfloorsLimit)">
+          <div class="usage-row-head">
+            <span class="usage-label"><i class="pi pi-compass"></i> Shopfloors</span>
+            <span class="usage-num">{{ s.usage.shopfloorsUsed }} / {{ formatLimit(s.usage.shopfloorsLimit) }}</span>
+          </div>
+          <div class="usage-bar"><span [style.width.%]="pct(s.usage.shopfloorsUsed, s.usage.shopfloorsLimit)"></span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Stripe placeholder note -->
+    <article class="bill-card hint">
+      <i class="pi pi-info-circle"></i>
+      <div>
+        <strong>Payments via Stripe coming soon.</strong>
+        Today, plan switches are applied immediately for testing.
+        Configure <code>Stripe:SecretKey</code> in <code>appsettings.json</code> and price IDs on each plan
+        to enable real checkout.
+      </div>
+    </article>
+  } @else {
+    <article class="bill-card">
+      <header class="bill-card-head">
+        <h3>No subscription found</h3>
+        <p>Pick a plan to get started.</p>
+      </header>
+      <p-button label="See plans" icon="pi pi-arrow-right" routerLink="/plans"></p-button>
+    </article>
+  }
+</section>

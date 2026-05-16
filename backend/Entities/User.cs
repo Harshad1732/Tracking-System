@@ -9,6 +9,9 @@ public class User
     public Guid TenantId { get; set; }
     public Tenant Tenant { get; set; } = null!;
 
+    /// <summary>Sequential per-tenant display number. Auto-assigned on create.</summary>
+    public int Number { get; set; }
+
     [Required, MaxLength(256)]
     public string Email { get; set; } = string.Empty;
 
@@ -26,6 +29,7 @@ public class User
     [MaxLength(256)]
     public string? ProviderUserId { get; set; }
 
+    public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();

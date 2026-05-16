@@ -10,7 +10,7 @@
     <nav class="nav-links">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
-      <a href="#about">About</a>
+      <a href="#plans">Plans</a>
     </nav>
   </ng-template>
 
@@ -18,25 +18,25 @@
     <div class="nav-actions">
       <p-button label="Login" icon="pi pi-sign-in" [text]="true" severity="secondary"
                 routerLink="/login"></p-button>
-      <p-button label="Sign Up" icon="pi pi-user-plus" routerLink="/signup"></p-button>
+      <p-button label="Start free" icon="pi pi-user-plus" routerLink="/signup"></p-button>
     </div>
   </ng-template>
 </p-toolbar>
 
 <section class="hero">
   <div class="hero-content">
-    <p-tag value="SHOPFLOOR TRACKING SYSTEM" severity="info" class="eyebrow"></p-tag>
-    <h1>See your shopfloor. <span class="accent">Run it better.</span></h1>
+    <p-tag value="GLASS SHEET TRACKING SYSTEM" severity="info" class="eyebrow"></p-tag>
+    <h1>Track every glass sheet, <span class="accent">from Storage to Dispatch.</span></h1>
     <p class="lede">
-      Tracker is a real-time manufacturing execution platform that captures
-      every machine, work order and operator event on the shopfloor &mdash; so
-      your team can cut downtime, hit takt time, and ship on schedule.
+      Tracker is a multi-tenant shopfloor system for glass processors. Import sheets
+      from Excel, move them through Cutting, Edging, Lamination and Marking with a
+      single click, and print a daily report your supervisors will actually read.
     </p>
     <div class="hero-actions">
-      <p-button label="Get Started" icon="pi pi-arrow-right" iconPos="right" size="large"
+      <p-button label="Start 14-day free trial" icon="pi pi-arrow-right" iconPos="right" size="large"
                 routerLink="/signup"></p-button>
-      <p-button label="Login to Dashboard" icon="pi pi-sign-in" size="large"
-                [outlined]="true" severity="contrast" routerLink="/login"></p-button>
+      <p-button label="See plans" icon="pi pi-credit-card" size="large"
+                [outlined]="true" severity="contrast" routerLink="/plans"></p-button>
     </div>
 
     <div class="stats">
@@ -53,19 +53,20 @@
     <p-card class="status-card">
       <ng-template #title>
         <div class="status-card-title">
-          <i class="pi pi-desktop"></i>
-          <span>Live Plant View</span>
+          <i class="pi pi-compass"></i>
+          <span>Live Shopfloor View</span>
         </div>
       </ng-template>
       <ng-template #content>
-        @for (line of lines; track line.name) {
+        @for (f of floors; track f.code) {
           <div class="status-row">
-            <i [class]="line.icon"></i>
+            <i [class]="f.icon"></i>
             <div class="status-name">
-              <strong>{{ line.name }}</strong>
-              <span class="muted">{{ line.detail }}</span>
+              <strong>{{ f.name }}</strong>
+              <span class="muted">{{ f.code }} · {{ f.detail }}</span>
             </div>
-            <p-tag [value]="line.status" [severity]="line.severity"></p-tag>
+            <p-tag [value]="f.severity === 'info' ? 'Entry' : (f.severity === 'warn' ? 'Active' : 'Ready')"
+                   [severity]="f.severity"></p-tag>
           </div>
         }
       </ng-template>
@@ -75,8 +76,8 @@
 
 <section id="features" class="features">
   <div class="section-head">
-    <h2>Everything you need to run a modern shopfloor</h2>
-    <p>One source of truth for production, quality, and people.</p>
+    <h2>Everything a glass shopfloor needs in one app</h2>
+    <p>Import, move, track, status, batch, report — without spreadsheets or whiteboards.</p>
   </div>
 
   <div class="feature-grid">
@@ -100,7 +101,7 @@
 
 <section id="how" class="how">
   <div class="section-head">
-    <h2>How Tracker fits your plant</h2>
+    <h2>From sign-up to live production in three steps</h2>
   </div>
   <div class="steps">
     @for (step of steps; track step.num) {
@@ -117,18 +118,40 @@
   </div>
 </section>
 
-<section id="about" class="cta">
-  <h2>Ready to bring your shopfloor online?</h2>
-  <p>Create an account and start tracking your first line today.</p>
+<p-divider></p-divider>
+
+<section id="plans" class="plans-strip">
+  <div class="section-head">
+    <h2>Pricing that scales with your throughput</h2>
+    <p>Free trial, no card. Upgrade when you outgrow it.</p>
+  </div>
+  <div class="plan-strip">
+    @for (p of plans; track p.code) {
+      <div class="plan-mini" [class.popular]="p.popular">
+        @if (p.popular) { <span class="plan-mini-tag">Most popular</span> }
+        <div class="plan-mini-name">{{ p.name }}</div>
+        <div class="plan-mini-price">{{ p.price }}<small>{{ p.price === '$0' ? '' : '/mo' }}</small></div>
+        <div class="plan-mini-sub">{{ p.sub }}</div>
+      </div>
+    }
+  </div>
+  <div class="plans-strip-cta">
+    <p-button label="See full comparison →" routerLink="/plans" severity="secondary" [text]="true"></p-button>
+  </div>
+</section>
+
+<section id="cta" class="cta">
+  <h2>Ready to bring your glass shopfloor online?</h2>
+  <p>Spin up your workspace in under a minute. Import your sheets. Watch the pipeline move.</p>
   <div class="cta-actions">
-    <p-button label="Sign Up" icon="pi pi-user-plus" size="large"
+    <p-button label="Start free trial" icon="pi pi-arrow-right" iconPos="right" size="large"
               routerLink="/signup"></p-button>
-    <p-button label="Login" icon="pi pi-sign-in" size="large"
+    <p-button label="Sign in" icon="pi pi-sign-in" size="large"
               [text]="true" severity="contrast" routerLink="/login"></p-button>
   </div>
 </section>
 
 <footer class="footer">
   <span>&copy; 2026 Tracker. All rights reserved.</span>
-  <span class="muted">Shopfloor Tracking System</span>
+  <span class="muted">Glass Sheet Tracking System · Multi-plant ready</span>
 </footer>
