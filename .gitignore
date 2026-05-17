@@ -1,0 +1,51 @@
+# =====================================================================
+# .NET / Visual Studio
+# =====================================================================
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.suo
+**/.idea/
+
+# EF Core local cache / lock files
+**/*.lscache
+**/*.lock
+
+# =====================================================================
+# Secrets — NEVER commit. Local dev uses `dotnet user-secrets`
+# (encrypted, lives in %APPDATA%\Microsoft\UserSecrets\<id>\secrets.json),
+# production uses Azure App Service Configuration / Key Vault.
+# =====================================================================
+**/appsettings.*.local.json
+**/appsettings.Local.json
+**/secrets.json
+.env
+.env.*
+!.env.example
+
+# =====================================================================
+# Node / Angular
+# =====================================================================
+**/node_modules/
+**/dist/
+**/.angular/
+**/coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Angular env override for personal dev settings (e.g. custom API URL)
+frontend/src/environments/environment.local.ts
+
+# =====================================================================
+# OS junk
+# =====================================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =====================================================================
+# Logs
+# =====================================================================
+**/*.log
