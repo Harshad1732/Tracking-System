@@ -12,7 +12,7 @@ namespace Tracker.Entities;
 /// Codes are global (not per-tenant) for now — multi-tenant overrides can be added
 /// later via a nullable TenantId column without breaking existing rows.
 /// </summary>
-public class SheetStatus
+public class SheetStatus : IAuditable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -46,5 +46,8 @@ public class SheetStatus
     /// <summary>Inactive statuses are kept for historical data but excluded from pickers.</summary>
     public bool IsActive { get; set; } = true;
 
+    public Guid? CreatedBy { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public Guid? ModifiedBy { get; set; }
+    public DateTime? ModifiedAtUtc { get; set; }
 }

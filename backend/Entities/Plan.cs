@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Tracker.Entities;
 
-public class Plan
+public class Plan : IAuditable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -50,4 +50,9 @@ public class Plan
     /// <c>p.Code == "free"</c> lookup in AuthService. Toggleable from the Plans UI.
     /// </summary>
     public bool IsDefaultOnSignup { get; set; }
+
+    public Guid? CreatedBy { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public Guid? ModifiedBy { get; set; }
+    public DateTime? ModifiedAtUtc { get; set; }
 }

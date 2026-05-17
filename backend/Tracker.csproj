@@ -5,6 +5,10 @@
     <LangVersion>10.0</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Enables `dotnet user-secrets` for local dev. Secrets live in
+         %APPDATA%\Microsoft\UserSecrets\<this-id>\secrets.json, never in the repo.
+         Production reads the same keys from Azure App Service Configuration. See SECRETS.md. -->
+    <UserSecretsId>tracker-backend-7c1e0f4a-2b91-4d3a-9c8e-1a2b3c4d5e6f</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

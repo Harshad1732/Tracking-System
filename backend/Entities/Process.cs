@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Tracker.Entities;
 
-public class Process
+public class Process : IAuditable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -24,5 +24,9 @@ public class Process
     public int SequenceNo { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public Guid? CreatedBy { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public Guid? ModifiedBy { get; set; }
+    public DateTime? ModifiedAtUtc { get; set; }
 }

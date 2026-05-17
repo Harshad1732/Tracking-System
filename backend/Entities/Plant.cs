@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Tracker.Entities;
 
-public class Plant
+public class Plant : IAuditable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -25,7 +25,11 @@ public class Plant
     public string? Phone { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public Guid? CreatedBy { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public Guid? ModifiedBy { get; set; }
+    public DateTime? ModifiedAtUtc { get; set; }
 
     public ICollection<Process> Processes { get; set; } = new List<Process>();
 }

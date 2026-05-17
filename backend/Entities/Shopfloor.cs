@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Tracker.Entities;
 
-public class Shopfloor
+public class Shopfloor : IAuditable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -55,5 +55,8 @@ public class Shopfloor
     public Guid? ProcessId { get; set; }
     public Process? Process { get; set; }
 
+    public Guid? CreatedBy { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public Guid? ModifiedBy { get; set; }
+    public DateTime? ModifiedAtUtc { get; set; }
 }

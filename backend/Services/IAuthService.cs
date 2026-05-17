@@ -90,6 +90,23 @@ public class AuthService : IAuthService
         };
         _db.Plants.Add(mainPlant);
 
+        // Every sheet entry point (single/bulk/replacement) requires an active IsStorage
+        // shopfloor on the current plant. Seed one here so a fresh tenant can add sheets
+        // immediately. Production floors are intentionally left to the admin — those vary
+        // by business and shouldn't be opinionated by us.
+        _db.Shopfloors.Add(new Shopfloor
+        {
+            TenantId = tenant.Id,
+            PlantId = mainPlant.Id,
+            Number = 1,
+            Code = "STORAGE",
+            Name = "Storage",
+            SequenceNo = 0,
+            IsStorage = true,
+            BatchMode = "None",
+            IsActive = true
+        });
+
         var user = new User
         {
             TenantId = tenant.Id,

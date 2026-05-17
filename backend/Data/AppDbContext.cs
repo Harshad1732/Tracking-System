@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Tracker.Entities;
 
@@ -5,7 +7,57 @@ namespace Tracker.Data;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    // Optional: design-time (dotnet ef) and the startup seeder run without an HTTP
+    // context. In those paths the audit *By columns stay null, which is the correct
+    // signal — "written by the system, not a logged-in user".
+    private readonly IHttpContextAccessor? _httpContextAccessor;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, IHttpContextAccessor? httpContextAccessor = null)
+        : base(options)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public override int SaveChanges()
+    {
+        StampAudit();
+        return base.SaveChanges();
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        StampAudit();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void StampAudit()
+    {
+        var now = DateTime.UtcNow;
+        var userId = GetCurrentUserId();
+        foreach (var entry in ChangeTracker.Entries<IAuditable>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (entry.Entity.CreatedAtUtc == default) entry.Entity.CreatedAtUtc = now;
+                entry.Entity.CreatedBy ??= userId;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.ModifiedAtUtc = now;
+                entry.Entity.ModifiedBy = userId;
+                // Guard against accidental overwrite of the create-trail by callers
+                // who reuse the same DTO for create and edit.
+                entry.Property(nameof(IAuditable.CreatedBy)).IsModified = false;
+                entry.Property(nameof(IAuditable.CreatedAtUtc)).IsModified = false;
+            }
+        }
+    }
+
+    private Guid? GetCurrentUserId()
+    {
+        var idRaw = _httpContextAccessor?.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(idRaw, out var id) ? id : null;
+    }
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();

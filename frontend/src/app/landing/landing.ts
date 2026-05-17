@@ -78,7 +78,7 @@ export class Landing {
     {
       icon: 'pi pi-credit-card',
       title: 'Plans that scale with you',
-      text: 'Free trial up to 100 sheets to evaluate. Starter / Pro / Enterprise tiers raise the limits on sheets, users, shopfloors and history retention. Switch any time from the billing page.'
+      text: 'Three INR plans — Annual (₹4L/yr), Biennial (₹7L/2yr, saves ₹1L), and Unlimited (₹20k/mo, cancel any time). All tiers are uncapped on sheets, users, and shopfloors — you choose on commitment, not features. Switch any time from the billing page.'
     },
     {
       icon: 'pi pi-mobile',
@@ -105,7 +105,7 @@ export class Landing {
     {
       num: 1,
       title: 'Create your workspace',
-      text: 'Sign up with your company name. You get an isolated tenant, your own Admin user, and a 14-day Free trial — no card required.'
+      text: 'Sign up with your company name. You get an isolated tenant, your own Admin user, and an active subscription on the Annual plan from day one.'
     },
     {
       num: 2,
@@ -120,9 +120,8 @@ export class Landing {
   ];
 
   protected readonly plans = [
-    { code: 'free',       name: 'Free',       price: '$0',   sub: '100 sheets · 2 users · 3 floors',     tone: 'neutral' as const, popular: false },
-    { code: 'starter',    name: 'Starter',    price: '$29',  sub: '1k sheets · 10 users · 10 floors',    tone: 'primary' as const, popular: false },
-    { code: 'pro',        name: 'Pro',        price: '$99',  sub: '10k sheets · 50 users · 50 floors',   tone: 'primary' as const, popular: true  },
-    { code: 'enterprise', name: 'Enterprise', price: '$299', sub: '100k sheets · 500 users · unlimited', tone: 'neutral' as const, popular: false }
+    { code: 'annual',    name: 'Annual',    price: '₹33,333', sub: '₹4,00,000 billed yearly · uncapped usage',                       popular: false },
+    { code: 'biennial',  name: 'Biennial',  price: '₹29,167', sub: '₹7,00,000 billed once / 2 years · save ₹1,00,000 vs annual',     popular: true  },
+    { code: 'unlimited', name: 'Unlimited', price: '₹20,000', sub: 'Pay-as-you-go monthly · cancel any time · uncapped usage',       popular: false }
   ];
 }

@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Tracker.Entities;
 
-public class Customer
+public class Customer : IAuditable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -31,5 +31,9 @@ public class Customer
     public string? Address { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public Guid? CreatedBy { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public Guid? ModifiedBy { get; set; }
+    public DateTime? ModifiedAtUtc { get; set; }
 }

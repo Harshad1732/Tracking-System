@@ -7,7 +7,7 @@ namespace Tracker.Entities;
 /// rows in <see cref="RolePermissions"/> rather than columns on this entity — that lets
 /// us add new resources/actions without schema changes.
 /// </summary>
-public class RoleDefinition
+public class RoleDefinition : IAuditable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -37,7 +37,11 @@ public class RoleDefinition
     public bool IsSystem { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public Guid? CreatedBy { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public Guid? ModifiedBy { get; set; }
+    public DateTime? ModifiedAtUtc { get; set; }
 
     public ICollection<RolePermission> Permissions { get; set; } = new List<RolePermission>();
     public ICollection<UserRoleAssignment> Assignments { get; set; } = new List<UserRoleAssignment>();

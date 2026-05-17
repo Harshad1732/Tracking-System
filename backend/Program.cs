@@ -46,6 +46,15 @@ builder.Services.AddScoped<IApplicationLogger, ApplicationLogger>();
 builder.Services.AddHttpContextAccessor();
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
+if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
+{
+    // HS256 requires >=256 bits of key material. An empty/short key would either crash at
+    // token-issue time or (worse) ship a weak signing key. Fail fast at startup instead.
+    // Set via `dotnet user-secrets set "Jwt:Key" "<64+ random chars>"` locally,
+    // or App Setting `Jwt__Key` (ideally a Key Vault reference) on Azure. See SECRETS.md.
+    throw new InvalidOperationException(
+        "Jwt:Key is not configured or is shorter than 32 chars. See SECRETS.md.");
+}
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -146,7 +155,11 @@ static async Task SeedAdminAsync(AppDbContext db, IServiceProvider sp, IPermissi
 
     var hasher = sp.GetRequiredService<IPasswordHasher>();
 
+    // Require BOTH email and password so we never create a seed admin with an empty
+    // password hash (which would still satisfy non-empty checks but never authenticate).
+    // Configure Seed:TenantAdmin:Password via user-secrets locally / App Settings on Azure.
     if (!string.IsNullOrWhiteSpace(opts.TenantAdmin.Email) &&
+        !string.IsNullOrWhiteSpace(opts.TenantAdmin.Password) &&
         !await db.Users.AnyAsync(u => u.TenantId == tenant.Id && u.Email == opts.TenantAdmin.Email))
     {
         var user = new User
@@ -171,6 +184,7 @@ static async Task SeedAdminAsync(AppDbContext db, IServiceProvider sp, IPermissi
     }
 
     if (!string.IsNullOrWhiteSpace(opts.PlatformAdmin.Email) &&
+        !string.IsNullOrWhiteSpace(opts.PlatformAdmin.Password) &&
         !await db.Users.AnyAsync(u => u.TenantId == tenant.Id && u.Email == opts.PlatformAdmin.Email))
     {
         var maxNumber = await db.Users.Where(u => u.TenantId == tenant.Id)
@@ -231,25 +245,28 @@ static async Task SeedPlansAsync(AppDbContext db)
 {
     if (await db.Plans.AnyAsync()) return;
 
+    // INR-tier offering: three plans, all uncapped on sheets/users/floors. Customers
+    // pick based on commitment length, not feature gating. Cents-named field is the
+    // smallest currency unit — for INR that's paise (1 INR = 100 paise).
     db.Plans.AddRange(
-        // TrialDays/BillingIntervalMonths populated from migration backfill on existing rows.
-        // IsDefaultOnSignup = true on exactly one plan — see IPlanRegistry.GetDefaultSignupPlanAsync.
-        new Plan { Code = "free",     Name = "Free",       Description = "For evaluating Tracker on a small line.",
-                   MonthlyPriceCents = 0,    Currency = "USD",
-                   MaxSheets = 100,   MaxUsers = 2,  MaxShopfloors = 3,  RetentionDays = 30,  SortOrder = 10,
-                   TrialDays = 14, BillingIntervalMonths = 1, IsDefaultOnSignup = true },
-        new Plan { Code = "starter",  Name = "Starter",    Description = "For a single shopfloor running daily production.",
-                   MonthlyPriceCents = 2900, Currency = "USD",
-                   MaxSheets = 1000,  MaxUsers = 10, MaxShopfloors = 10, RetentionDays = 90,  SortOrder = 20,
-                   TrialDays = 0, BillingIntervalMonths = 1 },
-        new Plan { Code = "pro",      Name = "Pro",        Description = "For multi-line plants with QC and batching.",
-                   MonthlyPriceCents = 9900, Currency = "USD",
-                   MaxSheets = 10000, MaxUsers = 50, MaxShopfloors = 50, RetentionDays = 365, SortOrder = 30,
-                   TrialDays = 0, BillingIntervalMonths = 1 },
-        new Plan { Code = "enterprise", Name = "Enterprise", Description = "Custom limits, SSO, dedicated support.",
-                   MonthlyPriceCents = 29900, Currency = "USD",
-                   MaxSheets = 100000, MaxUsers = 500, MaxShopfloors = 500, RetentionDays = -1, SortOrder = 40,
-                   TrialDays = 0, BillingIntervalMonths = 12 }
+        new Plan { Code = "annual", Name = "Annual",
+                   Description = "1-year commitment. ₹4,00,000 billed up front.",
+                   MonthlyPriceCents = 3_333_333, Currency = "INR",
+                   MaxSheets = int.MaxValue, MaxUsers = int.MaxValue, MaxShopfloors = int.MaxValue,
+                   RetentionDays = -1, SortOrder = 10,
+                   TrialDays = 0, BillingIntervalMonths = 12, IsDefaultOnSignup = true },
+        new Plan { Code = "biennial", Name = "Biennial",
+                   Description = "2-year commitment. ₹7,00,000 billed up front — saves ₹1,00,000 vs annual.",
+                   MonthlyPriceCents = 2_916_667, Currency = "INR",
+                   MaxSheets = int.MaxValue, MaxUsers = int.MaxValue, MaxShopfloors = int.MaxValue,
+                   RetentionDays = -1, SortOrder = 20,
+                   TrialDays = 0, BillingIntervalMonths = 24 },
+        new Plan { Code = "unlimited", Name = "Unlimited",
+                   Description = "Pay-as-you-go monthly. ₹20,000 / month, cancel any time.",
+                   MonthlyPriceCents = 2_000_000, Currency = "INR",
+                   MaxSheets = int.MaxValue, MaxUsers = int.MaxValue, MaxShopfloors = int.MaxValue,
+                   RetentionDays = -1, SortOrder = 30,
+                   TrialDays = 0, BillingIntervalMonths = 1 }
     );
     await db.SaveChangesAsync();
 }
@@ -259,13 +276,16 @@ static async Task SeedDemoSubscriptionAsync(AppDbContext db, SeedOptions opts)
     var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Slug == opts.DemoTenant.Slug);
     if (tenant is null) return;
     if (await db.Subscriptions.AnyAsync(s => s.TenantId == tenant.Id)) return;
-    var proPlan = await db.Plans.FirstOrDefaultAsync(p => p.Code == "pro");
-    if (proPlan is null) return;
-    var months = proPlan.BillingIntervalMonths > 0 ? proPlan.BillingIntervalMonths : 12;
+    // Pick the signup-default plan rather than a hardcoded code — keeps the seed in sync
+    // when the catalog gets renamed/retiered without code edits here.
+    var plan = await db.Plans.FirstOrDefaultAsync(p => p.IsDefaultOnSignup && p.IsActive)
+            ?? await db.Plans.OrderBy(p => p.SortOrder).FirstOrDefaultAsync();
+    if (plan is null) return;
+    var months = plan.BillingIntervalMonths > 0 ? plan.BillingIntervalMonths : 12;
     db.Subscriptions.Add(new Subscription
     {
         TenantId = tenant.Id,
-        PlanId = proPlan.Id,
+        PlanId = plan.Id,
         Status = "Active",
         // 12× billing intervals = roughly a year of evaluation runway for the demo tenant.
         CurrentPeriodEndsAtUtc = DateTime.UtcNow.AddMonths(months * 12)
